@@ -1,0 +1,79 @@
+<?php
+
+/**
+ * Implements hook_init().
+ */
+function nodejs_init() {
+  $nodejs_config = variable_get('nodejs_config', array('authkey' => session_id(), 'host' => $_SERVER['HTTP_HOST'], 'port' => 8080, 'resource' => '/node.js/realtime'));
+  drupal_add_js('sites/all/modules/nodejs/socket.io.js', array('type' => 'file'));
+  drupal_add_js('sites/all/modules/nodejs/nodejs.js', array('type' => 'file'));
+  drupal_add_js(array('nodejs' => $nodejs_config), array('type' => 'setting'));
+}
+
+/**
+ * Implements hook_menu().
+ */
+function nodejs_menu() {
+  return array(
+    'nodejs/auth/%' => array(
+      'title' => 'Who goes there?',
+      'page callback' => 'nodejs_auth_check',
+      'page arguments' => array(2),
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+    ),
+    'nodejs/publish' => array(
+      'title' => 'oh hai thar',
+      'page callback' => 'nodejs_publish_page',
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+    ),
+  );
+}
+
+/**
+ * Override or insert variables into the page template.
+ */
+function nodejs_preprocess_page(&$variables) {
+  if (variable_get('nodejs_debug', FALSE)) {
+    $variables['page']['content']['nodejs'] = array('#markup' => '<strong>Node js debug</strong><div id="nodejs-wrapper"></div>');
+  }
+}
+
+/**
+ * Implements hook_action_info().
+ */
+function nodejs_action_info() {
+  return array(
+    'nodejs_user_login_action' => array(
+      'type' => 'user',
+      'label' => t('Send login notification'),
+      'configurable' => FALSE,
+      'triggers' => array('user_login'),
+    ),
+  );
+}
+
+function nodejs_user_login_action($account, $form) {
+  $account = $account ? $account : $form['user'];
+  $result = nodejs_publish_message('foobar', 'user-notification=user-' . $account->uid . '-logged-in');
+}
+
+function nodejs_auth_check($auth_key) {
+  $uid = db_query("SELECT uid FROM {sessions} WHERE sid = :sid", array(':sid' => $auth_key))->fetchField();
+  if ($uid) {
+    $auth_user = user_load($uid);
+    $auth_user->is_valid = TRUE;
+  }
+  else {
+    $auth_user = drupal_anonymous_user();
+    $auth_user->is_valid = FALSE;
+  }
+  drupal_json_output($auth_user);
+  drupal_exit();
+}
+
+function nodejs_publish_message($channel, $message) {
+  return drupal_http_request('http://drupal7.clean:8080/publish', array('method' => 'POST', 'data' => $message));
+}
+

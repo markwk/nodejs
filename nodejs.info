@@ -1,0 +1,6 @@
+name = Nodejs integration
+description = Adds Node.js support to Drupal
+package = Nodejs
+version = VERSION
+core = 7.x
+files[] = nodejs.module
