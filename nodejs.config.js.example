@@ -1,0 +1,12 @@
+drupalSettings = {
+  'host': 'your.nodejs.server.hostname',
+  'port': 8080,
+  'resource': '/node.js/realtime',
+  'publishUrl' : '/publish',
+  'backend': {
+    'port': 80,
+    'host': 'your.drupal.sites.hostname',
+    'authPath': '/nodejs/auth/'
+   }
+}
+
