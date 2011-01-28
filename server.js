@@ -5,14 +5,22 @@
 var http = require('http'),
 		url = require('url'),
     fs = require('fs'),
-		io = require('/home/justin/code/Socket.IO-node/lib/socket.io'),
+		io = require(__dirname + '/socket_io/lib/socket.io'),
 		sys = require(process.binding('natives').util ? 'util' : 'sys'),
     server;
+
+try {
+  var drupalSettings = process.compile(fs.readFileSync(__dirname + '/nodejs.config.js'), "foo.txt");
+}
+catch (e) {
+  console.log("Failed to read config file, exiting: " + e);
+  process.exit(1);
+}
 
 server = http.createServer(function (request, response) {
   var path = url.parse(request.url).pathname;
   switch (path) {
-    case '/publish':
+    case drupalSettings.publishUrl:
 			request.setEncoding('utf8');
 			request.on('data', function (chunk) {
         for (var id in clients) {
@@ -35,14 +43,14 @@ send404 = function(res){
   res.end();
 };
 
-var socket = io.listen(server, {port: 8080, resource: '/node.js/realtime'});
+var socket = io.listen(server, {port: drupalSettings.port, resource: drupalSettings.resource});
 var clients = [];
 
 socket.on('connection', function(client) {
   client.on('message', function(message) {
     var match = null;
     if (match = message.match(/^authkey=(.*)$/)) {
-      var options = {port: 80, host: 'drupal7.clean', path: '/nodejs/auth/' + match[1]};
+      var options = {port: drupalSettings.backend.port, host: drupalSettings.backend.host, path: drupalSettings.backend.authPath + match[1]};
       http.get(options, function (response) {
 				console.log('client auth key' + match[1]);
         response.setEncoding('utf8');
