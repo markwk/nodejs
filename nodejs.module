@@ -9,6 +9,21 @@ function nodejs_init() {
   drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/support/socket.io-client/socket.io.js', array('type' => 'file'));
   drupal_add_js('sites/all/modules/nodejs/nodejs.js', array('type' => 'file'));
   drupal_add_js(array('nodejs' => $nodejs_config), array('type' => 'setting'));
+  foreach (nodejs_get_js_handlers() as $handler_file) {
+    drupal_add_js($handler_file, array('type' => 'file'));
+  }
+}
+
+/**
+ * Get a list of javascript handler files.
+ */
+function nodejs_get_js_handlers() {
+  $handlers = array();
+  foreach (module_invoke_all('nodejs_handlers_info') as $js_info) {
+    $handlers[] = $js_info;
+  }
+  drupal_alter('nodejs_js_handlers', $handlers);
+  return $handlers;
 }
 
 /**
@@ -60,20 +75,21 @@ function nodejs_user_login_action($account, $form) {
   NodeJs::enqueueMessage('foobar', $account);
 }
 
+/**
+ * Menu callback: checks the given key to see if it matches a valid session.
+ */
 function nodejs_auth_check($auth_key) {
   $uid = db_query("SELECT uid FROM {sessions} WHERE sid = :sid", array(':sid' => $auth_key))->fetchField();
-  if ($uid) {
-    $auth_user = user_load($uid);
-    $auth_user->is_valid = TRUE;
-  }
-  else {
-    $auth_user = drupal_anonymous_user();
-    $auth_user->is_valid = FALSE;
-  }
+  $auth_user = $uid > 0 ? user_load($uid) : drupal_anonymous_user();
+  $auth_user->nodejs_valid_auth_key = $uid !== FALSE;
+
   drupal_json_output($auth_user);
   drupal_exit();
 }
 
+/**
+ * Get nodejs server config.
+ */
 function nodejs_get_config() {
   static $nodejs_config;
   if ($nodejs_config === NULL) {
