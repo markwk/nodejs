@@ -1,0 +1,69 @@
+<?php
+
+/**
+ * Implements hook_nodejs_handlers_info().
+ */
+function nodejs_node_notifications_nodejs_handlers_info() {
+  return array(
+    'path' => drupal_get_path('module', 'nodejs_node_notifications') . '/nodejs_node_notifications.js',
+  );
+}
+
+function nodejs_user_login_action($account, $form) {
+  $account = $account ? $account : $form['user'];
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function nodejs_node_notifications_block_info() {
+  return array(
+    'nodejs_node_notifications_feed' => array(
+      'info' => t('Live feed of node changes.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_action_info().
+ */
+function nodejs_node_notifications_action_info() {
+  return array(
+    'nodejs_node_notification_action' => array(
+      'type' => 'node',
+      'triggers' => array('any'),
+      'label' => t('Publish realtime notification of node activity.'),
+      'configurable' => FALSE,
+    ),
+  );
+}
+
+/**
+ * Node activity action callback.
+ */
+function nodejs_node_notification_action($node, $context = array()) {
+  $message = (object) array(
+    'channel' => 'nodejs_node_notifications',
+    'event' => $context['hook'],
+    'node' => (object) array(
+      'nid' => $node->nid,
+      'title' => $node->title,
+    ),
+  );
+  NodeJs::enqueueMessage($message);
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function nodejs_node_notifications_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'nodejs_node_notifications_feed':
+      $block['subject'] = t('Live node feed');
+      $block['content'] = '<div id="nodejs-node-notifications-block"></div>';
+      break;
+  }
+  return $block;
+}
+

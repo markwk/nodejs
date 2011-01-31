@@ -1,0 +1,7 @@
+name = Node change notifications module
+description = Uses the Nodejs modules API for realtime node-change notifications
+package = Nodejs
+version = VERSION
+core = 7.x
+dependencies[] = nodejs
+files[] = nodejs_node_notifications.module
