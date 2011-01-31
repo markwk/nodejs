@@ -1,9 +1,7 @@
 
-
-
 (function ($) {
 
-Drupal.Nodejs = {'callbacks': {}};
+Drupal.Nodejs = Drupal.Nodejs || {'callbacks': {}};
 
 Drupal.Nodejs.runCallbacks = function (message) {
 	$.each(Drupal.Nodejs.callbacks, function () {

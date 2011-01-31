@@ -52,27 +52,8 @@ function nodejs_menu() {
  */
 function nodejs_preprocess_page(&$variables) {
   if (variable_get('nodejs_debug', FALSE)) {
-    $variables['page']['content']['nodejs'] = array('#markup' => '<strong>Node js debug</strong><div id="nodejs-wrapper"></div>');
+    $variables['page']['content']['nodejs_debug'] = array('#markup' => '<div id="nodejs-debug-wrapper"><h3>Node js debug</h3></div>');
   }
-}
-
-/**
- * Implements hook_action_info().
- */
-function nodejs_action_info() {
-  return array(
-    'nodejs_user_login_action' => array(
-      'type' => 'user',
-      'label' => t('Send login notification'),
-      'configurable' => FALSE,
-      'triggers' => array('user_login'),
-    ),
-  );
-}
-
-function nodejs_user_login_action($account, $form) {
-  $account = $account ? $account : $form['user'];
-  NodeJs::enqueueMessage('foobar', $account);
 }
 
 /**
@@ -112,15 +93,13 @@ class Nodejs {
     return self::$messages;
   }
 
-  public static function enqueueMessage($channel, $message) {
-    self::$messages[] = (object) array(
-      'channel' => $channel,
-      'message' => $message,
-    );
+  public static function enqueueMessage(StdClass $message) {
+    self::$messages[] = $message;
   }
 
   public static function sendMessages() {
     foreach (self::$messages as $message) {
+      $message->authkey = session_id();
       drupal_http_request('http://drupal7.clean:8080/publish', array('method' => 'POST', 'data' => drupal_json_encode($message)));
     }
   }
