@@ -31,7 +31,6 @@ server = http.createServer(function (request, response) {
         }
 			});
 			response.writeHead(200, {'Content-Type': 'text/plain'});
-			response.writeHead(200, {'X-Message-Published': 'mkay'});
 			response.end();
       break;
   }
@@ -46,25 +45,30 @@ send404 = function(res){
 };
 
 var socket = io.listen(server, {port: drupalSettings.port, resource: drupalSettings.resource});
-var clients = [];
+var clients = {};
 
 socket.on('connection', function(client) {
   client.on('message', function(message) {
-    var match = null;
+    var match = null, authkey = '';
     if (match = message.match(/^authkey=(.*)$/)) {
-      var options = {port: drupalSettings.backend.port, host: drupalSettings.backend.host, path: drupalSettings.backend.authPath + match[1]};
+			authkey = match[1];
+      if (clients[authkey]) {
+				console.log('reusing existing authkey' + authkey);
+				return;
+			}
+			var options = {port: drupalSettings.backend.port, host: drupalSettings.backend.host, path: drupalSettings.backend.authPath + authkey};
       http.get(options, function (response) {
-				console.log('client auth key' + match[1]);
+				console.log('client auth key: ' + authkey);
         response.setEncoding('utf8');
 				response.on('data', function (chunk) {
           var auth_data = JSON.parse(chunk);
-          if (auth_data.is_valid) {
+          if (auth_data.nodejs_valid_auth_key) {
             console.log("got valid login for uid " + auth_data.uid);
-						clients[client.sessionId] = client;
+						clients[authkey] = client;
 					}
 					else {
             console.log("got invalid login for uid " + auth_data.uid);
-						delete clients[client.sessionId];
+						delete clients[authkey];
 					}
 				});
 			}).on('error', function(e) {
