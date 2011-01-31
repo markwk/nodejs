@@ -7,10 +7,11 @@ var http = require('http'),
     fs = require('fs'),
 		io = require(__dirname + '/socket_io/lib/socket.io'),
 		sys = require(process.binding('natives').util ? 'util' : 'sys'),
+    vm = require('vm'),
     server;
 
 try {
-  var drupalSettings = process.compile(fs.readFileSync(__dirname + '/nodejs.config.js'), "foo.txt");
+  var drupalSettings = vm.runInThisContext(fs.readFileSync(__dirname + '/nodejs.config.js'));
 }
 catch (e) {
   console.log("Failed to read config file, exiting: " + e);
@@ -23,8 +24,9 @@ server = http.createServer(function (request, response) {
     case drupalSettings.publishUrl:
 			request.setEncoding('utf8');
 			request.on('data', function (chunk) {
+        var message = JSON.parse(chunk);
         for (var id in clients) {
-					console.log('got a call to publish something, sending "' + chunk + '" to client "' + id + '"');
+					console.log('got a call to publish something on channel "' + message.channel + '", data "' + message.message + '" to client "' + id + '"');
 					clients[id].send({message: chunk});
         }
 			});
