@@ -8,7 +8,11 @@ var http = require('http'),
 		io = require(__dirname + '/socket_io/lib/socket.io'),
 		sys = require(process.binding('natives').util ? 'util' : 'sys'),
     vm = require('vm'),
-    server;
+    server,
+		authenticatedClients = {},
+    send404,
+    publishMessage,
+    socket;
 
 try {
   var drupalSettings = vm.runInThisContext(fs.readFileSync(__dirname + '/nodejs.config.js'));
@@ -18,36 +22,33 @@ catch (e) {
   process.exit(1);
 }
 
+publishMessage = function (request, response) {
+	request.setEncoding('utf8');
+	request.on('data', function (chunk) {
+    socket.broadcast(chunk);
+	});
+	response.writeHead(200, {'Content-Type': 'text/plain'});
+	response.end();
+}
+
+send404 = function(response){
+  response.writeHead(404);
+  response.write('404');
+  response.end();
+};
+
 server = http.createServer(function (request, response) {
   var path = url.parse(request.url).pathname;
   switch (path) {
     case drupalSettings.publishUrl:
-			request.setEncoding('utf8');
-			request.on('data', function (chunk) {
-        var message = JSON.parse(chunk);
-        for (var id in authenticatedClients) {
-          if (id == message.authkey) {
-						authenticatedClients[id].broadcast(chunk);
-            break;
-					}
-        }
-			});
-			response.writeHead(200, {'Content-Type': 'text/plain'});
-			response.end();
+      publishMessage(request, response);
       break;
   }
 });
 
 server.listen(8080);
 
-send404 = function(res){
-  res.writeHead(404);
-  res.write('404');
-  res.end();
-};
-
-var socket = io.listen(server, {port: drupalSettings.port, resource: drupalSettings.resource});
-var authenticatedClients = {};
+socket = io.listen(server, {port: drupalSettings.port, resource: drupalSettings.resource});
 
 socket.on('connection', function(client) {
   client.on('message', function(message) {
