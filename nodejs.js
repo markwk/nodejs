@@ -1,7 +1,7 @@
 
 (function ($) {
 
-Drupal.Nodejs = Drupal.Nodejs || {'callbacks': {}, 'socket': false};
+Drupal.Nodejs = Drupal.Nodejs || {'callbacks': {}, 'userCallbacks': {}, 'socket': false};
 
 Drupal.Nodejs.runCallbacks = function (message) {
 	$.each(Drupal.Nodejs.callbacks, function () {
@@ -11,10 +11,23 @@ Drupal.Nodejs.runCallbacks = function (message) {
 	});
 };
 
+Drupal.Nodejs.runUserCallbacks = function (message) {
+	$.each(Drupal.Nodejs.userCallbacks, function () {
+		if ($.isFunction(this.callback)) {
+			this.callback(message);
+		}
+	});
+};
+
 Drupal.Nodejs.callbacks.nodejsUserChannel = {
   callback: function (message) {
     message = JSON.parse(message);
-    alert(message.channel);
+  }
+};
+
+Drupal.Nodejs.userCallbacks.privateMsg = {
+  callback: function (message) {
+    $('#block-privatemsg-privatemsg-new').append('<p>New message: ' + message.data.subject + '</p>');
   }
 };
 
@@ -30,8 +43,13 @@ Drupal.behaviors.nodejs = {
       });
       Drupal.Nodejs.socket.send(jsonMessage);
       Drupal.Nodejs.socket.on('message', function(newMessage) {
-        alert(newMessage);
-        Drupal.Nodejs.runCallbacks(newMessage);
+        newMessage = JSON.parse(newMessage);
+        if (/^user_(\d+)$/.test(newMessage.channel)) {
+          Drupal.Nodejs.runUserCallbacks(newMessage);
+        }
+        else {
+          Drupal.Nodejs.runCallbacks(newMessage);
+        }
       });
     }
   }
