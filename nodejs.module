@@ -5,9 +5,9 @@
  */
 function nodejs_init() {
   register_shutdown_function(array('Nodejs', 'sendMessages'));
-  $nodejs_config = variable_get('nodejs_config', array('authkey' => session_id(), 'host' => $_SERVER['HTTP_HOST'], 'port' => 8080, 'resource' => '/node.js/realtime'));
+  $nodejs_config = nodejs_get_config();
   drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/support/socket.io-client/socket.io.js', array('type' => 'file'));
-  drupal_add_js('sites/all/modules/nodejs/nodejs.js', array('type' => 'file'));
+  drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', array('type' => 'file'));
   drupal_add_js(array('nodejs' => $nodejs_config), array('type' => 'setting'));
   foreach (nodejs_get_js_handlers() as $handler_file) {
     drupal_add_js($handler_file, array('type' => 'file'));
@@ -72,15 +72,19 @@ function nodejs_auth_check($auth_key) {
  * Get nodejs server config.
  */
 function nodejs_get_config() {
+  global $user;
+
   static $nodejs_config;
   if ($nodejs_config === NULL) {
     $defaults = array(
-      'authkey' => session_id(),
-      'host' => $_SERVER['HTTP_HOST'],
+      'host' => 'localhost',
       'port' => 8080,
       'resource' => '/node.js/realtime',
+      'authkey' => session_id(),
+      'uid' => $user->uid,
+      'channels' => array('user_' . $user->uid),
     );
-    $nodejs_config = variable_get('nodejs_config', $defaults);
+    $nodejs_config = variable_get('nodejs_config', array()) + $defaults;
   }
   return $nodejs_config;
 }
@@ -98,10 +102,28 @@ class Nodejs {
   }
 
   public static function sendMessages() {
-    foreach (self::$messages as $message) {
+    $config = nodejs_get_config();
+    foreach (self::$messages as &$message) {
       $message->authkey = session_id();
-      drupal_http_request('http://drupal7.clean:8080/publish', array('method' => 'POST', 'data' => drupal_json_encode($message)));
+      drupal_http_request('http://' . $config['host'] . ':' . $config['port'] . '/publish', array('method' => 'POST', 'data' => drupal_json_encode($message)));
     }
+  }
+}
+
+/**
+ * Implements hook_privatemsg_message_insert().
+ */
+function nodejs_privatemsg_message_insert($message) {
+  $node_message = (object) array(
+    'broadcast' => FALSE,
+    'data' => (object) array(
+      'subject' => $message->subject,
+      'body' => $message->body,
+    ),
+  );
+  foreach ($message->recipients as $recipient) {
+    $node_message->channel = 'user_' . $recipient->uid;
+    Nodejs::enqueueMessage($node_message);
   }
 }
 
