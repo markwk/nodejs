@@ -5,6 +5,7 @@
 var http = require('http'),
 		url = require('url'),
     fs = require('fs'),
+		express = require('express'),
 		io = require(__dirname + '/socket_io/lib/socket.io'),
 		sys = require(process.binding('natives').util ? 'util' : 'sys'),
     vm = require('vm'),
@@ -61,7 +62,7 @@ send404 = function(response){
   response.end();
 };
 
-server = http.createServer(function (request, response) {
+server = express.createServer(function (request, response) {
   var path = url.parse(request.url).pathname;
   switch (path) {
     case drupalSettings.publishUrl:
