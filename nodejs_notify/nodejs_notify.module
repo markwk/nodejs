@@ -1,0 +1,45 @@
+<?php
+
+/**
+ * Implements hook_nodejs_handlers_info().
+ */
+function nodejs_notify_nodejs_handlers_info() {
+  return array(
+    'path' => drupal_get_path('module', 'nodejs_notify') . '/nodejs.notify.js',
+  );
+}
+
+/**
+ * Implements hook_action_info().
+ */
+function nodejs_notify_action_info() {
+  return array(
+    'nodejs_node_notification_action' => array(
+      'type' => 'node',
+      'triggers' => array('any'),
+      'label' => t('Publish realtime notifications of site activity.'),
+      'configurable' => FALSE,
+    ),
+  );
+}
+
+/**
+ * Implements hook_preprocess_page().
+ */
+function nodejs_notify_preprocess_page(&$vars) {
+  drupal_add_library('system', 'ui.dialog');
+  $node_message = (object) array(
+    'broadcast' => TRUE,
+    'data' => (object) array(
+      'subject' => 'oh hai',
+      'body' => 'oh hai',
+    ),
+    'channel' => 'nodejs_notify',
+  );
+  Nodejs::enqueueMessage($node_message);
+
+  $vars['page']['content']['nodejs_notify'] = array(
+    '#markup' => '<div id="nodejs-notify-alerts-wrapper"></div>',
+  );
+}
+
