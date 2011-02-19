@@ -75,6 +75,13 @@ function nodejs_get_config() {
   global $user;
 
   static $nodejs_config;
+
+  $channels = (variable_get('nodejs_enable_userchannel', TRUE)) ? array('user_' . $user->uid) : array();
+  foreach (module_invoke_all('nodejs_channels_info') as $channel) {
+    $channels[] = $channel;
+  }
+  drupal_alter('nodejs_js_channels', $channels);
+
   if ($nodejs_config === NULL) {
     $defaults = array(
       'host' => 'localhost',
@@ -82,7 +89,7 @@ function nodejs_get_config() {
       'resource' => '/node.js/realtime',
       'authkey' => session_id(),
       'uid' => $user->uid,
-      'channels' => array('user_' . $user->uid),
+      'channels' => $channels,
     );
     $nodejs_config = variable_get('nodejs_config', array()) + $defaults;
   }
