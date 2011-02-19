@@ -121,20 +121,3 @@ class Nodejs {
   }
 }
 
-/**
- * Implements hook_privatemsg_message_insert().
- */
-function nodejs_privatemsg_message_insert($message) {
-  $node_message = (object) array(
-    'broadcast' => FALSE,
-    'data' => (object) array(
-      'subject' => $message->subject,
-      'body' => $message->body,
-    ),
-  );
-  foreach ($message->recipients as $recipient) {
-    $node_message->channel = 'user_' . $recipient->uid;
-    Nodejs::enqueueMessage($node_message);
-  }
-}
-
