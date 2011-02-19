@@ -63,6 +63,10 @@ function nodejs_auth_check($auth_key) {
   $uid = db_query("SELECT uid FROM {sessions} WHERE sid = :sid", array(':sid' => $auth_key))->fetchField();
   $auth_user = $uid > 0 ? user_load($uid) : drupal_anonymous_user();
   $auth_user->nodejs_valid_auth_key = $uid !== FALSE;
+  $auth_user->channels = (variable_get('nodejs_enable_userchannel', TRUE)) ? array('user_' . $user->uid) : array();
+  foreach (module_invoke_all('nodejs_channels_info') as $channel) {
+    $auth_user->channels[] = $channel;
+  }
 
   drupal_json_output($auth_user);
   drupal_exit();
