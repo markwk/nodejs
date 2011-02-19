@@ -13,33 +13,76 @@ function nodejs_notify_nodejs_handlers_info() {
  * Implements hook_action_info().
  */
 function nodejs_notify_action_info() {
-  return array(
-    'nodejs_node_notification_action' => array(
-      'type' => 'node',
-      'triggers' => array('any'),
-      'label' => t('Publish realtime notifications of site activity.'),
+  $actions = array();
+
+  $triggers = module_invoke_all('trigger_info');
+  drupal_alter('trigger_info', $triggers);
+
+  foreach (array('node', 'user', 'comment', 'system') as $type) {
+    $actions['nodejs_notify_' . $type . '_action'] = array(
+      'type' => $type,
+      'triggers' => array_keys($triggers[$type]),
+      'label' => t("Publish realtime notifications of $type activity."),
       'configurable' => FALSE,
-    ),
-  );
+    );
+  }
+  return $actions;
 }
 
 /**
- * Implements hook_preprocess_page().
+ * Node object action callback.
+ *
+ * @param object $node
+ * @param array $context
  */
-function nodejs_notify_preprocess_page(&$vars) {
-  drupal_add_library('system', 'ui.dialog');
-  $node_message = (object) array(
+function nodejs_notify_node_action($node, $context = array()) {
+
+}
+
+/**
+ * Comment object action callback.
+ *
+ * @param object $node
+ * @param array $context
+ */
+function nodejs_notify_comment_action($comment, $context = array()) {
+
+}
+
+/**
+ * User object action callback.
+ *
+ * @param object $node
+ * @param array $context
+ */
+function nodejs_notify_user_action($user, $context = array()) {
+
+}
+
+/**
+ * System object action callback.
+ *
+ * @param object $node
+ * @param array $context
+ */
+function nodejs_notify_system_action($system, $context = array()) {
+  $message = (object) array(
     'broadcast' => TRUE,
     'data' => (object) array(
-      'subject' => 'oh hai',
-      'body' => 'oh hai',
+      'subject' => t('System event.'),
+      'body' => print_r(array($system, $context), TRUE),
     ),
     'channel' => 'nodejs_notify',
   );
-  Nodejs::enqueueMessage($node_message);
+  Nodejs::enqueueMessage($message);
+}
 
-  $vars['page']['content']['nodejs_notify'] = array(
-    '#markup' => '<div id="nodejs-notify-alerts-wrapper"></div>',
-  );
+/**
+ * Implements hook_init().
+ */
+function nodejs_notify_init() {
+  drupal_add_library('system', 'ui.dialog');
+  drupal_add_css(drupal_get_path('module', 'nodejs_notify') .'/libraries/jgrowl/jquery.jgrowl.css');
+  drupal_add_js(drupal_get_path('module', 'nodejs_notify') .'/libraries/jgrowl/jquery.jgrowl.js');
 }
 
