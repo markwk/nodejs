@@ -19,12 +19,6 @@ Drupal.Nodejs.runUserCallbacks = function (message) {
 	});
 };
 
-Drupal.Nodejs.callbacks.nodejsUserChannel = {
-  callback: function (message) {
-    message = JSON.parse(message);
-  }
-};
-
 Drupal.Nodejs.userCallbacks.privateMsg = {
   callback: function (message) {
     $('#block-privatemsg-privatemsg-new').append('<p>New message: ' + message.data.subject + '</p>');
