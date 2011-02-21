@@ -19,12 +19,6 @@ Drupal.Nodejs.runUserCallbacks = function (message) {
 	});
 };
 
-Drupal.Nodejs.userCallbacks.privateMsg = {
-  callback: function (message) {
-    $('#block-privatemsg-privatemsg-new').append('<p>New message: ' + message.data.subject + '</p>');
-  }
-};
-
 Drupal.behaviors.nodejs = {
   attach: function (context, settings) {
 		if (!Drupal.Nodejs.socket) {
