@@ -12,11 +12,16 @@ Drupal.Nodejs.runCallbacks = function (message) {
 };
 
 Drupal.Nodejs.runUserCallbacks = function (message) {
-	$.each(Drupal.Nodejs.userCallbacks, function () {
-		if ($.isFunction(this.callback)) {
-			this.callback(message);
-		}
-	});
+  if (message.callback && $.isFunction(Drupal.Nodejs.userCallbacks[message.callback].callback)) {
+    Drupal.Nodejs.userCallbacks[message.callback].callback(message);
+  }
+  else {
+    $.each(Drupal.Nodejs.userCallbacks, function () {
+      if ($.isFunction(this.callback)) {
+        this.callback(message);
+      }
+    });
+  }
 };
 
 Drupal.behaviors.nodejs = {
