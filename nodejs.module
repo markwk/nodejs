@@ -38,13 +38,91 @@ function nodejs_menu() {
       'access callback' => TRUE,
       'type' => MENU_CALLBACK,
     ),
-    'nodejs/publish' => array(
-      'title' => 'oh hai thar',
-      'page callback' => 'nodejs_publish_page',
+    'nodejs/stats' => array(
+      'title' => 'Node.js server stats',
+      'page callback' => 'nodejs_server_stats_page',
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+    ),
+    'nodejs/stats/users' => array(
+      'title' => 'Node.js users stats',
+      'page callback' => 'nodejs_users_stats_page',
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+    ),
+    'nodejs/stats/user/%user' => array(
+      'title' => 'Node.js user stats',
+      'page callback' => 'nodejs_user_stats_page',
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+    ),
+    'nodejs/stats/channel/%channel' => array(
+      'title' => 'Node.js channel stats',
+      'page callback' => 'nodejs_channel_stats_page',
       'access callback' => TRUE,
       'type' => MENU_CALLBACK,
     ),
   );
+}
+
+/**
+ * Menu callback: renders overall users stats from the Node.js server.
+ */
+function nodejs_users_stats_page() {
+  $page = array(
+    '#type' => 'page',
+    'content' => array(
+      'nodejs' => array(
+        '#markup' => __FUNCTION__,
+      ),
+    ),
+  );
+  return $page;
+}
+
+/**
+ * Menu callback: renders stats for the given user from the Node.js server.
+ */
+function nodejs_user_stats_page($user) {
+  $page = array(
+    '#type' => 'page',
+    'content' => array(
+      'nodejs' => array(
+        '#markup' => __FUNCTION__,
+      ),
+    ),
+  );
+  return $page;
+}
+
+/**
+ * Menu callback: renders stats for the given channel from the Node.js server.
+ */
+function nodejs_channel_stats_page($channel) {
+  $page = array(
+    '#type' => 'page',
+    'content' => array(
+      'nodejs' => array(
+        '#markup' => __FUNCTION__,
+      ),
+    ),
+  );
+  return $page;
+}
+
+/**
+ * Menu callback: renders overall stats for the Node.js server.
+ */
+function nodejs_server_stats_page() {
+  $page = array(
+    '#type' => 'page',
+    'content' => array(
+      'nodejs' => array(
+        '#markup' => __FUNCTION__,
+      ),
+    ),
+  );
+  return $page;
 }
 
 /**
