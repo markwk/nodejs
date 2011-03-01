@@ -51,3 +51,4 @@ function nodejs_ajax_render($commands = array(), $options = array()) {
   NodeJs::sendMessages();
   NodeJs::$messages = array();
 }
+

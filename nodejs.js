@@ -4,11 +4,11 @@
 Drupal.Nodejs = Drupal.Nodejs || {'callbacks': {}, 'userCallbacks': {}, 'socket': false};
 
 Drupal.Nodejs.runCallbacks = function (message) {
-	$.each(Drupal.Nodejs.callbacks, function () {
-		if ($.isFunction(this.callback)) {
-			this.callback(message);
-		}
-	});
+  $.each(Drupal.Nodejs.callbacks, function () {
+    if ($.isFunction(this.callback)) {
+      this.callback(message);
+    }
+  });
 };
 
 Drupal.Nodejs.runUserCallbacks = function (message) {
@@ -26,7 +26,7 @@ Drupal.Nodejs.runUserCallbacks = function (message) {
 
 Drupal.behaviors.nodejs = {
   attach: function (context, settings) {
-		if (!Drupal.Nodejs.socket) {
+    if (!Drupal.Nodejs.socket) {
       Drupal.Nodejs.socket = new io.Socket(Drupal.settings.nodejs.host, {port: Drupal.settings.nodejs.port, resource: Drupal.settings.nodejs.resource});
       Drupal.Nodejs.socket.connect();
       var jsonMessage = JSON.stringify({
