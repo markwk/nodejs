@@ -182,7 +182,13 @@ socket.on('connection', function(client) {
     http.get(options, function (response) {
       response.setEncoding('utf8');
       response.on('data', function (chunk) {
-        var auth_data = JSON.parse(chunk);
+        try {
+          var auth_data = JSON.parse(chunk);
+        }
+        catch (e) {
+          console.log(e);
+          return;
+        }
         if (auth_data.nodejs_valid_auth_key) {
           console.log("got valid login for uid " + auth_data.uid);
           authenticatedClients[message.authkey] = auth_data.uid;
