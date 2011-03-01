@@ -37,7 +37,6 @@ publishMessage = function (request, response) {
     }
   });
   response.writeHead(200, {'Content-Type': 'text/plain'});
-  response.end();
 }
 
 publishMessageToChannel = function (jsonObject, jsonString) {
@@ -59,9 +58,8 @@ publishMessageToChannel = function (jsonObject, jsonString) {
 /**
  * Sends a 404 message.
  */
-send404 = function(response) {
+send404 = function(request, response) {
   response.send('Not Found.', 404);
-  response.end();
 };
 
 /**
@@ -74,7 +72,6 @@ kickUser = function(request, response) {
   else {
     response.send({'status': 'failed', 'error': 'Unknown user'});
   }
-  response.end();
 };
 
 /**
@@ -87,7 +84,6 @@ kickAnonUser = function(request, response) {
   else {
     response.send({'status': 'failed', 'error': 'Unknown session'});
   }
-  response.end();
 };
 
 /**
@@ -95,7 +91,6 @@ kickAnonUser = function(request, response) {
  */
 banUser = function(request, response) {
   response.send({'status': 'success'});
-  response.end();
 };
 
 /**
@@ -108,7 +103,6 @@ returnChannelStats = function(request, response) {
     'created': '',
   };
   response.send(stats);
-  response.end();
 };
 
 /**
@@ -123,7 +117,6 @@ returnServerStats = function(request, response) {
     'memory': ''
   };
   response.send(stats);
-  response.end();
 };
 
 /**
