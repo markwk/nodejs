@@ -5,3 +5,5 @@ version = VERSION
 core = 7.x
 files[] = nodejs.module
 dependencies[] = nodejs
+dependencies[] = trigger
+

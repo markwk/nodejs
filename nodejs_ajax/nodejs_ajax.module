@@ -12,9 +12,10 @@ function nodejs_ajax_init() {
  */
 function nodejs_ajax_nodejs_handlers_info() {
   return array(
-    'path' => drupal_get_path('module', 'nodejs_ajax') . '/nodejs_ajax.js',
+    drupal_get_path('module', 'nodejs_ajax') . '/nodejs_ajax.js',
   );
 }
+
 /**
  * Implements hook_nodejs_channels_info().
  */

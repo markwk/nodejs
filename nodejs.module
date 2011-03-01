@@ -18,10 +18,7 @@ function nodejs_init() {
  * Get a list of javascript handler files.
  */
 function nodejs_get_js_handlers() {
-  $handlers = array();
-  foreach (module_invoke_all('nodejs_handlers_info') as $js_info) {
-    $handlers[] = $js_info;
-  }
+  $handlers = module_invoke_all('nodejs_handlers_info');
   drupal_alter('nodejs_js_handlers', $handlers);
   return $handlers;
 }

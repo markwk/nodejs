@@ -5,7 +5,7 @@
  */
 function nodejs_notify_nodejs_handlers_info() {
   return array(
-    'path' => drupal_get_path('module', 'nodejs_notify') . '/nodejs.notify.js',
+    drupal_get_path('module', 'nodejs_notify') . '/nodejs.notify.js',
   );
 }
 
