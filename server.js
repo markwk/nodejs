@@ -14,6 +14,7 @@ var http = require('http'),
     send404,
     publishMessage,
     publishMessageToChannel,
+    authKeyClientSessionIdMap,
     socket;
 
 try {
@@ -73,11 +74,20 @@ send404 = function(request, response) {
  */
 kickUser = function(request, response) {
   if (request.params.userId) {
-    response.send({'status': 'success'});
+    for (var sessionId in authenticatedClients) {
+      if (authenticatedClients[sessionId] == request.params.userId) {
+        delete authenticatedClients[sessionId];
+        for (var clientId in socket.clients) {
+          if (socket.clients[clientId].uid == request.params.userId) {
+            delete socket.clients[clientId];
+          }
+        }
+        response.send({'status': 'success'});
+        return;
+      }
+    }
   }
-  else {
-    response.send({'status': 'failed', 'error': 'Unknown user'});
-  }
+  response.send({'status': 'failed', 'error': 'Unknown user'});
 };
 
 /**
@@ -85,19 +95,32 @@ kickUser = function(request, response) {
  */
 kickAnonUser = function(request, response) {
   if (request.params.sessionId) {
-    response.send({'status': 'success'});
+    for (var sessionId in authenticatedClients) {
+      if (sessionId == request.params.sessionId) {
+        delete authenticatedClients[sessionId];
+        for (var clientId in socket.clients) {
+          if (socket.clients[clientId].authKey == sessionId) {
+            delete socket.clients[clientId];
+          }
+        }
+        response.send({'status': 'success'});
+        return;
+      }
+    }
   }
-  else {
-    response.send({'status': 'failed', 'error': 'Unknown session'});
-  }
+  response.send({'status': 'failed', 'error': 'Unknown session'});
 };
 
 /**
  * Bans the given user from the server.
  */
 banUser = function(request, response) {
-
-  response.send({'status': 'success'});
+  if (request.params.userId) {
+    response.send({'status': 'success'});
+  }
+  else {
+    response.send({'status': 'failed', 'error': 'Unknown user'});
+  }
 };
 
 /**
@@ -204,6 +227,8 @@ socket.on('connection', function(client) {
         if (auth_data.nodejs_valid_auth_key) {
           console.log("got valid login for uid " + auth_data.uid);
           authenticatedClients[message.authkey] = auth_data.uid;
+          socket.clients[client.sessionId].authKey = message.authKey;
+          socket.clients[client.sessionId].uid = auth_data.uid;
           for (var i = 0; i < message.channels.length; i++) {
             console.log("adding channels for uid " + auth_data.uid + ' ' + message.channels[i]);
             socket.channels[message.channels[i]] = socket.channels[message.channels[i]] || {};
