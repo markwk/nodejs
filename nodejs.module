@@ -1,6 +1,17 @@
 <?php
 
 /**
+ * Kick a user off the node.js server.
+ *
+ * @param mixed $uid 
+ */
+function nodejs_kick_user($uid) {
+  $config = nodejs_get_config();
+  $url = 'http://' . $config['host'] . ':' . $config['port'] . "/nodejs/user/kick/$uid";
+  $response = drupal_http_request($url);
+}
+
+/**
  * Broadcast a message to all clients.
  * 
  * @param string $subject

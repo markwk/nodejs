@@ -9,6 +9,8 @@ function nodejs_drush_help($section) {
      return dt('Broadcast a message to all connected cliets.');
     case 'drush:user-message':
      return dt('Send a message to a given user.');
+    case 'drush:kick-user':
+     return dt('Kick the given user off the node.js server.');
   }
 }
 
@@ -31,6 +33,13 @@ function nodejs_drush_command() {
       'uid' => 'The user id of the message recipient.',
       'subject' => 'The subject of the message.',
       'body' => 'The body of message.',
+    ),
+  );
+  $items['kick-user'] = array(
+    'callback' => 'nodejs_kick_user',
+    'description' => 'Kick the given user off the node.js server.',
+    'arguments' => array(
+      'uid' => 'The user id of the person to be kicked off.',
     ),
   );
   return $items;
