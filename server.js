@@ -14,7 +14,6 @@ var http = require('http'),
     send404,
     publishMessage,
     publishMessageToChannel,
-    authKeyClientSessionIdMap,
     socket;
 
 try {
@@ -74,8 +73,10 @@ send404 = function(request, response) {
  */
 kickUser = function(request, response) {
   if (request.params.userId) {
+    console.log('attempting to kick user: ' + request.params.userId);
     for (var sessionId in authenticatedClients) {
       if (authenticatedClients[sessionId] == request.params.userId) {
+        console.log('kicking user: ' + request.params.userId);
         delete authenticatedClients[sessionId];
         for (var clientId in socket.clients) {
           if (socket.clients[clientId].uid == request.params.userId) {
@@ -87,6 +88,7 @@ kickUser = function(request, response) {
       }
     }
   }
+  console.log('failed to kick user: unknown');
   response.send({'status': 'failed', 'error': 'Unknown user'});
 };
 
@@ -181,7 +183,7 @@ returnUserStats = function(request, response) {
 drupalSettings.serverStatsUrl = '/nodejs/stats/server';
 drupalSettings.userStatsUrl = '/nodejs/stats/user/:sessionId?';
 drupalSettings.channelStatsUrl = '/nodejs/stats/channel/:channelName?';
-drupalSettings.kickUserUrl = '/nodejs/user/kick/:sessionId';
+drupalSettings.kickUserUrl = '/nodejs/user/kick/:userId';
 
 server = express.createServer();
 server.post(drupalSettings.publishUrl, publishMessage);
