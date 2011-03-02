@@ -25,21 +25,25 @@ catch (e) {
 }
 
 publishMessage = function (request, response) {
+  var sentCount = 0;
   request.setEncoding('utf8');
   request.on('data', function (chunk) {
     var publish_message = JSON.parse(chunk);
     if (publish_message.broadcast) {
       console.log('broadcasting to ' + publish_message.channel);
       socket.broadcast(chunk);
+      sentCount = socket.clients.length;
     }
     else {
-      publishMessageToChannel(publish_message, chunk);
+      sentCount = publishMessageToChannel(publish_message, chunk);
     }
   });
-  response.writeHead(200, {'Content-Type': 'text/plain'});
+  response.writeHead(200, {'Content-Type': 'text/json'});
+  response.send(JSON.stringify({sent: sentCount}));
 }
 
 publishMessageToChannel = function (jsonObject, jsonString) {
+  var clientCount = 0;
   if (socket.channels[jsonObject.channel]) {
     console.log('sending to channel ' + jsonObject.channel);
     for (var sessionId in socket.clients) {
@@ -47,12 +51,14 @@ publishMessageToChannel = function (jsonObject, jsonString) {
       if (sessionId in socket.channels[jsonObject.channel]) {
         socket.clients[sessionId].send(jsonString);
         console.log('found session ' + sessionId + ' sending message');
+        clientCount++;
       }
     }
   }
   else {
     console.log('no channel to send to: ' + jsonObject.channel);
   }
+  return clientCount;
 }
 
 /**
@@ -90,6 +96,7 @@ kickAnonUser = function(request, response) {
  * Bans the given user from the server.
  */
 banUser = function(request, response) {
+
   response.send({'status': 'success'});
 };
 
@@ -109,12 +116,17 @@ returnChannelStats = function(request, response) {
  * Return summary info about the server.
  */
 returnServerStats = function(request, response) {
+  var channels = [], clients = [];
+  for (var channel in socket.channels) {
+    channels.push(channel);
+  }
+  for (var sessionId in authenticatedClients) {
+    clients.push({'uid': authenticatedClients[sessionId], 'sessionId': sessionId});
+  }
   var stats = {
-    'userCount': 53,
-    'clientCount': 53,
-    'channelCount': 53,
-    'uptime': '',
-    'memory': ''
+    'channels': channels,
+    'totalClientCount': socket.clients.length,
+    'authenticatedClients': clients
   };
   response.send(stats);
 };
@@ -149,7 +161,7 @@ drupalSettings.channelStatsUrl = '/nodejs/stats/channel/:channelName?';
 drupalSettings.kickUserUrl = '/nodejs/user/kick/:sessionId';
 
 server = express.createServer();
-server.get(drupalSettings.publishUrl, publishMessage);
+server.post(drupalSettings.publishUrl, publishMessage);
 server.get(drupalSettings.serverStatsUrl, returnServerStats);
 server.get(drupalSettings.userStatsUrl, returnUserStats);
 server.get(drupalSettings.channelStatsUrl, returnChannelStats);
