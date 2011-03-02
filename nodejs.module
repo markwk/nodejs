@@ -1,9 +1,60 @@
 <?php
 
 /**
+ * Broadcast a message to all clients.
+ * 
+ * @param string $subject
+ * @param string $body
+ */
+function nodejs_broadcast_message($subject, $body) {
+  $message = (object) array(
+    'broadcast' => TRUE,
+    'data' => (object) array(
+      'subject' => $subject,
+      'body' => $body,
+    ),
+    'channel' => 'nodejs_notify',
+  );
+  Nodejs::enqueueMessage($message);
+}
+
+/**
+ * Send a message to given user.
+ * 
+ * @param int $uid
+ * @param string $subject
+ * @param string $body
+ */
+function nodejs_send_user_message($uid, $subject, $body) {
+  $message = (object) array(
+    'broadcast' => FALSE,
+    'data' => (object) array(
+      'subject' => $subject,
+      'body' => $body,
+    ),
+    'channel' => 'user_' . $uid,
+    'callback' => 'nodejsNotify',
+  );
+  Nodejs::enqueueMessage($message);
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function nodejs_theme($existing, $type, $theme, $path) {
+  return array(
+    'nodejs_stats_page' => array(
+      'variables' => array('stats' => new StdClass()),
+    ),
+  );
+}
+
+/**
  * Implements hook_init().
  */
 function nodejs_init() {
+  $_SESSION['nodejs'] = 'lazy sessions are lazy';
   register_shutdown_function(array('Nodejs', 'sendMessages'));
   $nodejs_config = nodejs_get_config();
   drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/support/socket.io-client/socket.io.js', array('type' => 'file'));
@@ -115,7 +166,7 @@ function nodejs_server_stats_page() {
     '#type' => 'page',
     'content' => array(
       'nodejs' => array(
-        '#markup' => __FUNCTION__,
+        '#markup' => theme('nodejs_stats_page', array('stats' => nodejs_get_server_stats())),
       ),
     ),
   );
@@ -173,6 +224,53 @@ function nodejs_get_config() {
     $nodejs_config = variable_get('nodejs_config', array()) + $defaults;
   }
   return $nodejs_config;
+}
+
+/**
+ * Theme the server stats page
+ * 
+ * @param StdClass $stats 
+ * @return string
+ */
+function theme_nodejs_stats_page(array $variables) {
+  $stats = $variables['stats'];
+  if (empty($stats)) {
+    return "Error reading Node.js server stats.";
+  }
+  else {
+    $html = '<div class="nodejs-server-stats">';
+    $html .= '<h3>Authenticated clients</h3>';
+    if (count($stats->authenticatedClients)) {
+      $html .= '<ul>';
+      foreach ($stats->authenticatedClients as $client) {
+        $html .= '<li>' . $client->uid . '</li>';
+      }
+      $html .= '</ul>';
+    }
+    else {
+      $html .= '<p>There are no authenticated clients</p>';
+    }
+    $html .= '<h3>Channels</h3>';
+    $html .= '</div>';
+    return $html;
+  }
+}
+
+/**
+ * Get the stats from the node.js server.
+ * 
+ * @return StdClass server stats
+ */
+function nodejs_get_server_stats() {
+  $config = nodejs_get_config();
+  $url = 'http://' . $config['host'] . ':' . $config['port'] . '/nodejs/stats/server';
+  $result = drupal_http_request($url);
+  if (isset($result->error)) {
+    return (object) array();
+  }
+  else {
+    return (object) json_decode($result->data);
+  }
 }
 
 class Nodejs {
