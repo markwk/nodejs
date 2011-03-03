@@ -1,22 +1,14 @@
 
 (function ($) {
 
-Drupal.Nodejs = Drupal.Nodejs || {'callbacks': {}, 'userCallbacks': {}, 'socket': false};
+Drupal.Nodejs = Drupal.Nodejs || {'callbacks': {}, 'socket': false};
 
 Drupal.Nodejs.runCallbacks = function (message) {
-  $.each(Drupal.Nodejs.callbacks, function () {
-    if ($.isFunction(this.callback)) {
-      this.callback(message);
-    }
-  });
-};
-
-Drupal.Nodejs.runUserCallbacks = function (message) {
-  if (message.callback && $.isFunction(Drupal.Nodejs.userCallbacks[message.callback].callback)) {
-    Drupal.Nodejs.userCallbacks[message.callback].callback(message);
+  if (message.callback && $.isFunction(Drupal.Nodejs.callbacks[message.callback].callback)) {
+    Drupal.Nodejs.callbacks[message.callback].callback(message);
   }
   else {
-    $.each(Drupal.Nodejs.userCallbacks, function () {
+    $.each(Drupal.Nodejs.callbacks, function () {
       if ($.isFunction(this.callback)) {
         this.callback(message);
       }
@@ -37,12 +29,7 @@ Drupal.behaviors.nodejs = {
       Drupal.Nodejs.socket.send(jsonMessage);
       Drupal.Nodejs.socket.on('message', function(newMessage) {
         newMessage = JSON.parse(newMessage);
-        if (/^user_(\d+)$/.test(newMessage.channel)) {
-          Drupal.Nodejs.runUserCallbacks(newMessage);
-        }
-        else {
-          Drupal.Nodejs.runCallbacks(newMessage);
-        }
+        Drupal.Nodejs.runCallbacks(newMessage);
       });
     }
   }

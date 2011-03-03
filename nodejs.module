@@ -49,7 +49,6 @@ function nodejs_send_user_message($uid, $subject, $body) {
   Nodejs::enqueueMessage($message);
 }
 
-
 /**
  * Implements hook_theme().
  */
@@ -303,5 +302,12 @@ class Nodejs {
       drupal_http_request('http://' . $config['host'] . ':' . $config['port'] . '/publish', array('method' => 'POST', 'data' => drupal_json_encode($message)));
     }
   }
+
+  public static function sendMessage(StdClass $message) {
+    $config = nodejs_get_config();
+    $message->authkey = session_id();
+    drupal_http_request('http://' . $config['host'] . ':' . $config['port'] . '/publish', array('method' => 'POST', 'data' => drupal_json_encode($message)));
+  }
+
 }
 

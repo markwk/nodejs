@@ -1,3 +1,4 @@
+
 (function ($) {
 
   var element_settings = {};
@@ -18,17 +19,6 @@
             }
           }
           break;
-      }
-    }
-  };
-
-  Drupal.Nodejs.userCallbacks.nodejsNodeAjax = {
-    callback: function (message) {
-      var response = message.commands;
-      for (var i in response) {
-        if (response[i]['command'] && Drupal.nodejs_ajax.commands[response[i]['command']]) {
-          Drupal.nodejs_ajax.commands[response[i]['command']](Drupal.nodejs_ajax, response[i], 200);
-        }
       }
     }
   };

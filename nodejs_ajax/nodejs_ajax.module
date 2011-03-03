@@ -47,8 +47,6 @@ function nodejs_ajax_render($commands = array(), $options = array()) {
     $message->callback = $options['callback'];
   }
 
-  NodeJs::enqueueMessage($message);
-  NodeJs::sendMessages();
-  NodeJs::$messages = array();
+  NodeJs::sendMessage($message);
 }
 
