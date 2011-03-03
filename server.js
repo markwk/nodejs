@@ -76,15 +76,17 @@ kickUser = function(request, response) {
     console.log('attempting to kick user: ' + request.params.userId);
     for (var sessionId in authenticatedClients) {
       if (authenticatedClients[sessionId] == request.params.userId) {
-        console.log('kicking user: ' + request.params.userId);
-        delete authenticatedClients[sessionId];
+        console.log('found user in authenticatedClients: ' + request.params.userId);
         for (var clientId in socket.clients) {
           if (socket.clients[clientId].uid == request.params.userId) {
             delete socket.clients[clientId];
+            delete authenticatedClients[sessionId];
+            console.log('found user in socket.clients, kicked off uid: ' + request.params.userId);
+            response.send({'status': 'success'});
+            return;
           }
         }
-        response.send({'status': 'success'});
-        return;
+        console.log('failed to find client in socket.clients');
       }
     }
   }
