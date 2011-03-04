@@ -27,6 +27,9 @@ function nodejs_ajax_nodejs_channels_info() {
 
 /**
  * Send some commands to the user asynchronously.
+ *
+ * @param array $commands 
+ * @param array $options 
  */
 function nodejs_ajax_render($commands = array(), $options = array()) {
   $options += array(
@@ -47,6 +50,6 @@ function nodejs_ajax_render($commands = array(), $options = array()) {
     $message->callback = $options['callback'];
   }
 
-  NodeJs::sendMessage($message);
+  return nodejs_send_message($message);
 }
 

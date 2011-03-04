@@ -56,7 +56,15 @@ function nodejs_notify_comment_action($comment, $context = array()) {
  * @param array $context
  */
 function nodejs_notify_user_action($user, $context = array()) {
-
+  $message = (object) array(
+    'broadcast' => TRUE,
+    'data' => (object) array(
+      'subject' => t('System event.'),
+      'body' => print_r(array($system, $context), TRUE),
+    ),
+    'channel' => 'nodejs_notify',
+  );
+  nodejs_enqueue_message($message);
 }
 
 /**
@@ -74,7 +82,7 @@ function nodejs_notify_system_action($system, $context = array()) {
     ),
     'channel' => 'nodejs_notify',
   );
-  Nodejs::enqueueMessage($message);
+  nodejs_enqueue_message($message);
 }
 
 /**

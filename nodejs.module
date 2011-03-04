@@ -26,7 +26,7 @@ function nodejs_broadcast_message($subject, $body) {
     ),
     'channel' => 'nodejs_notify',
   );
-  Nodejs::enqueueMessage($message);
+  nodejs_enqueue_message($message);
 }
 
 /**
@@ -46,7 +46,6 @@ function nodejs_send_user_message($uid, $subject, $body) {
     'channel' => 'user_' . $uid,
     'callback' => 'nodejsNotify',
   );
-  Nodejs::enqueueMessage($message);
 }
 
 /**
@@ -166,6 +165,26 @@ function nodejs_channel_stats_page($channel) {
     ),
   );
   return $page;
+}
+
+/**
+ * Enqueue a message for sending at the end of the request.
+ * 
+ * @param StdClass $message 
+ */
+function nodejs_enqueue_message(StdClass $message) {
+  drupal_alter('nodejs_message', $message);
+  Nodejs::enqueueMessage($message);
+}
+
+/**
+ * Send a message immediately.
+ * 
+ * @param StdClass $message 
+ */
+function nodejs_send_message(StdClass $message) {
+  drupal_alter('nodejs_message', $message);
+  return Nodejs::sendMessage($message);
 }
 
 /**
