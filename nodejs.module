@@ -241,7 +241,7 @@ function nodejs_get_config() {
 
   static $nodejs_config;
 
-  $channels = module_invoke_all('nodejs_user_channels', $auth_user);
+  $channels = module_invoke_all('nodejs_user_channels', $user);
   drupal_alter('nodejs_js_channels', $channels);
 
   if ($nodejs_config === NULL) {
