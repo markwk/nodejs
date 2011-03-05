@@ -212,16 +212,22 @@ function nodejs_preprocess_page(&$variables) {
 }
 
 /**
+ * Implements hook_nodejs_user_channels().
+ */
+function nodejs_nodejs_user_channels($account) {
+  if (variable_get('nodejs_enable_userchannel')) {
+    return array('nodejs_user_' . $account->uid);
+  }
+}
+
+/**
  * Menu callback: checks the given key to see if it matches a valid session.
  */
 function nodejs_auth_check($auth_key) {
   $uid = db_query("SELECT uid FROM {sessions} WHERE sid = :sid", array(':sid' => $auth_key))->fetchField();
   $auth_user = $uid > 0 ? user_load($uid) : drupal_anonymous_user();
   $auth_user->nodejs_valid_auth_key = $uid !== FALSE;
-  $auth_user->channels = (variable_get('nodejs_enable_userchannel', TRUE)) ? array('user_' . $user->uid) : array();
-  foreach (module_invoke_all('nodejs_channels_info') as $channel) {
-    $auth_user->channels[] = $channel;
-  }
+  $auth_user->channels = module_invoke_all('nodejs_user_channels', $auth_user);
 
   drupal_json_output($auth_user);
   drupal_exit();
@@ -235,10 +241,7 @@ function nodejs_get_config() {
 
   static $nodejs_config;
 
-  $channels = (variable_get('nodejs_enable_userchannel', TRUE)) ? array('user_' . $user->uid) : array();
-  foreach (module_invoke_all('nodejs_channels_info') as $channel) {
-    $channels[] = $channel;
-  }
+  $channels = module_invoke_all('nodejs_user_channels', $auth_user);
   drupal_alter('nodejs_js_channels', $channels);
 
   if ($nodejs_config === NULL) {

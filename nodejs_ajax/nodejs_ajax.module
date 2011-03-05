@@ -17,9 +17,9 @@ function nodejs_ajax_nodejs_handlers_info() {
 }
 
 /**
- * Implements hook_nodejs_channels_info().
+ * Implements hook_nodejs_user_channels().
  */
-function nodejs_ajax_nodejs_channels_info() {
+function nodejs_ajax_nodejs_user_channels($account) {
   return array(
     'nodejs_ajax_broadcast',
   );
@@ -33,7 +33,7 @@ function nodejs_ajax_nodejs_channels_info() {
  */
 function nodejs_ajax_render($commands = array(), $options = array()) {
   $options += array(
-    'channel' => 'user_',
+    'channel' => 'nodejs_user_',
     'uid' => NULL,
   );
 
