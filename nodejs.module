@@ -43,9 +43,10 @@ function nodejs_send_user_message($uid, $subject, $body) {
       'subject' => $subject,
       'body' => $body,
     ),
-    'channel' => 'user_' . $uid,
+    'channel' => 'nodejs_user_' . $uid,
     'callback' => 'nodejsNotify',
   );
+  nodejs_enqueue_message($message);
 }
 
 /**
@@ -215,7 +216,7 @@ function nodejs_preprocess_page(&$variables) {
  * Implements hook_nodejs_user_channels().
  */
 function nodejs_nodejs_user_channels($account) {
-  if (variable_get('nodejs_enable_userchannel')) {
+  if (variable_get('nodejs_enable_userchannel', TRUE) && $account->uid) {
     return array('nodejs_user_' . $account->uid);
   }
 }
