@@ -78,6 +78,7 @@ kickUser = function(request, response) {
       if (authenticatedClients[sessionId] == request.params.userId) {
         console.log('found user in authenticatedClients: ' + request.params.userId);
         for (var clientId in socket.clients) {
+          console.log('checking client uid: ' + socket.clients[clientId].uid);
           if (socket.clients[clientId].uid == request.params.userId) {
             delete socket.clients[clientId];
             delete authenticatedClients[sessionId];
@@ -206,6 +207,8 @@ socket.on('connection', function(client) {
     console.log('authkey: ' + message.authkey);
     if (authenticatedClients[message.authkey]) {
       console.log('reusing existing authkey: ' + message.authkey);
+      socket.clients[client.sessionId].authKey = message.authKey;
+      socket.clients[client.sessionId].uid = message.uid;
       for (var i = 0; i < message.channels.length; i++) {
         console.log("adding channels for uid " + message.uid + ' ' + message.channels[i]);
         socket.channels[message.channels[i]] = socket.channels[message.channels[i]] || {};
