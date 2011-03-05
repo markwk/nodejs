@@ -224,7 +224,7 @@ function nodejs_nodejs_user_channels($account) {
  * Menu callback: checks the given key to see if it matches a valid session.
  */
 function nodejs_auth_check($auth_key) {
-  $uid = db_query("SELECT uid FROM {sessions} WHERE sid = :sid", array(':sid' => $auth_key))->fetchField();
+  $uid = db_query("SELECT uid FROM {sessions} WHERE MD5(sid) = :auth_key", array(':auth_key' => $auth_key))->fetchField();
   $auth_user = $uid > 0 ? user_load($uid) : drupal_anonymous_user();
   $auth_user->nodejs_valid_auth_key = $uid !== FALSE;
   $auth_user->channels = module_invoke_all('nodejs_user_channels', $auth_user);
@@ -249,7 +249,7 @@ function nodejs_get_config() {
       'host' => 'localhost',
       'port' => 8080,
       'resource' => '/node.js/realtime',
-      'authkey' => session_id(),
+      'authkey' => md5(session_id()),
       'uid' => $user->uid,
       'channels' => $channels,
     );
