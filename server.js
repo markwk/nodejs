@@ -206,7 +206,7 @@ socket.on('connection', function(client) {
     message = JSON.parse(message);
     console.log('authkey: ' + message.authkey);
     if (authenticatedClients[message.authkey]) {
-      console.log('reusing existing authkey: ' + message.authkey);
+      console.log('reusing existing authkey: ' + message.authkey + ' with uid ' + message.uid);
       socket.clients[client.sessionId].authKey = message.authKey;
       socket.clients[client.sessionId].uid = message.uid;
       for (var i = 0; i < message.channels.length; i++) {
