@@ -93,9 +93,9 @@ function nodejs_notify_node_action($node, $context = array()) {
  */
 function nodejs_notify_comment_action($comment, $context = array()) {
   if ($action = nodejs_notify_get_action($context)) {
-    $subject = t('Comment %action.', array('%action' => $triggers[$context['hook']]));
+    $subject = t('Comment %action.', array('%action' => $action));
     $link = l($comment->subject, 'node/' . $comment->nid, array('fragment' => 'comment-' . $comment->cid));
-    $body = t('The comment !link was %action.', array('!link' => $link, '%action' => $triggers[$context['hook']]));
+    $body = t('The comment !link was %action.', array('!link' => $link, '%action' => $action));
     nodejs_notify_enqueue_message($subject, $body);
   }
 }
