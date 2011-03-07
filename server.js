@@ -46,9 +46,8 @@ publishMessageToChannel = function (jsonObject, jsonString) {
   var clientCount = 0;
   if (socket.channels[jsonObject.channel]) {
     console.log('sending to channel ' + jsonObject.channel);
-    for (var sessionId in socket.clients) {
-      console.log('looking for session ' + sessionId);
-      if (sessionId in socket.channels[jsonObject.channel]) {
+    for (var sessionId in socket.channels[jsonObject.channel]) {
+      if (sessionId in socket.clients[sessionId]) {
         socket.clients[sessionId].send(jsonString);
         console.log('found session ' + sessionId + ' sending message');
         clientCount++;
@@ -96,48 +95,14 @@ kickUser = function(request, response) {
 };
 
 /**
- * Kicks the client matched to the given sessionId from the server.
+ * Return a list of active channels.
  */
-kickAnonUser = function(request, response) {
-  if (request.params.sessionId) {
-    for (var sessionId in authenticatedClients) {
-      if (sessionId == request.params.sessionId) {
-        delete authenticatedClients[sessionId];
-        for (var clientId in socket.clients) {
-          if (socket.clients[clientId].authKey == sessionId) {
-            delete socket.clients[clientId];
-          }
-        }
-        response.send({'status': 'success'});
-        return;
-      }
-    }
+getActiveChannels = function(request, response) {
+  var channels = {};
+  for (var channel in socket.channels) {
+    channels[channel] = channel;
   }
-  response.send({'status': 'failed', 'error': 'Unknown session'});
-};
-
-/**
- * Bans the given user from the server.
- */
-banUser = function(request, response) {
-  if (request.params.userId) {
-    response.send({'status': 'success'});
-  }
-  else {
-    response.send({'status': 'failed', 'error': 'Unknown user'});
-  }
-};
-
-/**
- * Return a summary of all channels, or more details about a single channel.
- */
-returnChannelStats = function(request, response) {
-  var stats = {
-    'userCount': 53,
-    'clientCount': 53,
-    'created': '',
-  };
-  response.send(stats);
+  response.send(channels);
 };
 
 /**
@@ -171,7 +136,6 @@ returnUserStats = function(request, response) {
       'lastAuthCheck': '',
       'sessionIds': [],
       'lastKickTime': '',
-      'banned': ''
     };
   }
   else {
@@ -183,17 +147,56 @@ returnUserStats = function(request, response) {
   response.send(stats);
 };
 
+/**
+ * Get the list of Node.js sessionIds for a given uid.
+ */
+getNodejsSessionIdsFromUid = function(uid) {
+  var sessionIds = [];
+  for (var sessionId in socket.clients) {
+    if (socket.clients[sessionId].uid == uid) {
+      sessionIds.push(sessionId);
+    }
+  }
+  return sessionIds;
+}
+
+/**
+ * Add a use to a channel.
+ */
+addUserToChannel = function(request, response) {
+  var uid = request.params.userId;
+  var channel = request.params.channel;
+  if (uid && channel) {
+    socket.channels[channel] = socket.channels[channel] || {};
+    var sessionIds = getNodejsSessionIdsFromUid(uid);
+    if (sessionIds.length > 0) {
+      for (var i in sessionIds) {
+        socket.channels[channel][sessionIds[i]] = sessionIds[i];
+      }
+      response.send({'status': 'success'});
+    }
+    else {
+      response.send({'status': 'failed', 'error': 'No active sessions for uid.'});
+    }
+  }
+  else {
+    response.send({'status': 'failed', 'error': 'Invalid data'});
+  }
+};
+
 drupalSettings.serverStatsUrl = '/nodejs/stats/server';
 drupalSettings.userStatsUrl = '/nodejs/stats/user/:sessionId?';
-drupalSettings.channelStatsUrl = '/nodejs/stats/channel/:channelName?';
+drupalSettings.getActiveChannelsUrl = '/nodejs/stats/channels';
 drupalSettings.kickUserUrl = '/nodejs/user/kick/:userId';
+drupalSettings.addUserToChannel = '/nodejs/user/channel/add/:channel/:userId';
 
 server = express.createServer();
 server.post(drupalSettings.publishUrl, publishMessage);
 server.get(drupalSettings.serverStatsUrl, returnServerStats);
 server.get(drupalSettings.userStatsUrl, returnUserStats);
-server.get(drupalSettings.channelStatsUrl, returnChannelStats);
+server.get(drupalSettings.getActiveChannelsUrl, getActiveChannels);
 server.get(drupalSettings.kickUserUrl, kickUser);
+server.get(drupalSettings.addUserToChannel, addUserToChannel);
 server.get('*', send404);
 
 server.listen(drupalSettings.port, drupalSettings.host);
@@ -227,8 +230,8 @@ socket.on('connection', function(client) {
         try {
           var auth_data = JSON.parse(chunk);
         }
-        catch (e) {
-          console.log(e);
+        catch (exception) {
+          console.log(exception);
           return;
         }
         if (auth_data.nodejs_valid_auth_key) {
@@ -250,11 +253,11 @@ socket.on('connection', function(client) {
     }).on('error', function(e) {
       console.log("Got error: " + e.message);
     });
-  });
-  client.on('disconnect', function() {
+  }).on('disconnect', function() {
+    console.log('disconnect from client ' + client.sessionId + ' ' + client.uid + ' ' + client);
     console.log('disconnect from client ' + client.sessionId);
   });
-}).on('error', function(client) {
-  console.log('error: ' . client);
+}).on('error', function(exception) {
+  console.log(exception);
 });
 
