@@ -164,9 +164,18 @@ getNodejsSessionIdsFromUid = function(uid) {
  * Add a use to a channel.
  */
 addUserToChannel = function(request, response) {
-  var uid = request.params.userId;
-  var channel = request.params.channel;
+  var uid = request.params.userId || '';
+  var channel = request.params.channel || '';
   if (uid && channel) {
+    if (!/^\d+$/.test(uid)) {
+      response.send({'status': 'failed', 'error': 'Invalid uid.'});
+      return;
+    }
+    if (!/^[a-z0-9_]+$/i.test(channel)) {
+      response.send({'status': 'failed', 'error': 'Invalid channel name.'});
+      return;
+    }
+    socket.channels[channel] = socket.channels[channel] || {};
     socket.channels[channel] = socket.channels[channel] || {};
     var sessionIds = getNodejsSessionIdsFromUid(uid);
     if (sessionIds.length > 0) {
