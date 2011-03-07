@@ -182,13 +182,30 @@ function nodejs_add_user_to_channel_form($form, $form_state) {
  * @param mixed $form
  * @param mixed $form_state
  */
-function nodejs_add_user_to_channel_form_submit($form, $form_state) {
+function nodejs_add_user_to_channel_form_submit($form, &$form_state) {
   $values = (object) $form_state['values'];
   if (nodejs_add_user_to_channel($values->nodejs_uid, $values->nodejs_channel)) {
     drupal_set_message(t("Added uid %uid to %channel.", array('%uid' => $values->nodejs_uid, '%channel' => $values->nodejs_channel)));
   }
   else {
     drupal_set_message(t("Failed to add uid %uid to %channel.", array('%uid' => $$values->nodejs_uid, '%channel' => $values->nodejs_channel)), 'error');
+  }
+}
+
+/**
+ * Form validate callback - add a user to a channel on the Node.js server.
+ * 
+ * @param mixed $form
+ * @param mixed $form_state
+ * @return void
+ */
+function nodejs_add_user_to_channel_form_validate($form, &$form_state) {
+  $values = (object) $form_state['values'];
+  if (!preg_match('/^\d+$/', $values->nodejs_uid)) {
+    form_set_error('nodejs_uid', t('Invalid uid - please enter a numeric uid.'));
+  }
+  if (!preg_match('/^([a-z0-9_]+)$/i', $values->nodejs_channel)) {
+    form_set_error('nodejs_channel', t('Invalid channel name - only numbers, letters and underscores are allowed.'));
   }
 }
 
