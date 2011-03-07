@@ -102,6 +102,13 @@ function nodejs_menu() {
       'access callback' => TRUE,
       'type' => MENU_CALLBACK,
     ),
+    'nodejs/user/channel/add' => array(
+      'title' => 'Node.js server stats',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('nodejs_add_user_to_channel_form'),
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+    ),
     'nodejs/stats/users' => array(
       'title' => 'Node.js users stats',
       'page callback' => 'nodejs_users_stats_page',
@@ -121,6 +128,68 @@ function nodejs_menu() {
       'type' => MENU_CALLBACK,
     ),
   );
+}
+
+/**
+ * Get a list of active channels from the node.js server.
+ * 
+ * @access public
+ * @return array
+ */
+function nodejs_get_channels() {
+  $config = nodejs_get_config();
+  $url = 'http://' . $config['host'] . ':' . $config['port'] . "/nodejs/stats/channels";
+  $response = drupal_http_request($url);
+  if (isset($response->error)) {
+    watchdog('nodejs', t('Error getting channel list from Node.js server: [%code] %error', array('%code' => $response->code, '%error' => $response->error)));
+    return array();
+  }
+  else {
+    $channels = drupal_json_decode($response->data);
+    return (array) $channels;
+  }
+}
+
+/**
+ * Form callback, add a user to a channel.
+ * 
+ * @param mixed $form 
+ * @param mixed $form_state 
+ * @return array
+ */
+function nodejs_add_user_to_channel_form($form, $form_state) {
+  $form = array();
+  $form['nodejs_uid'] = array(
+    '#type' => 'textfield',
+    '#description' => t('The user uid to add to a channel.'),
+    '#title' => t('User uid to add'),
+  );
+  $form['nodejs_channel'] = array(
+    '#type' => 'textfield',
+    '#description' => t('The name of the channel to give a user access to.'),
+    '#title' => t('Channel to add'),
+  );
+  $form['nodejs_submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Add user'),
+  );
+  return $form;
+}
+
+/**
+ * Form submit callback - add a user to a channel on the Node.js server.
+ * 
+ * @param mixed $form
+ * @param mixed $form_state
+ */
+function nodejs_add_user_to_channel_form_submit($form, $form_state) {
+  $values = (object) $form_state['values'];
+  if (nodejs_add_user_to_channel($values->nodejs_uid, $values->nodejs_channel)) {
+    drupal_set_message(t("Added uid %uid to %channel.", array('%uid' => $values->nodejs_uid, '%channel' => $values->nodejs_channel)));
+  }
+  else {
+    drupal_set_message(t("Failed to add uid %uid to %channel.", array('%uid' => $$values->nodejs_uid, '%channel' => $values->nodejs_channel)), 'error');
+  }
 }
 
 /**
@@ -306,18 +375,40 @@ function nodejs_get_server_stats() {
   }
 }
 
+/**
+ * Add a user to a channel.
+ * 
+ * @param mixed $uid 
+ * @param mixed $channel 
+ * @return void
+ */
+function nodejs_add_user_to_channel($uid, $channel) {
+  $config = nodejs_get_config();
+  $url = 'http://' . $config['host'] . ':' . $config['port'] . "/nodejs/user/channel/add/$channel/$uid";
+  $result = drupal_http_request($url);
+  if (isset($result->error)) {
+    $params = array(
+      '%uid' => $uid,
+      '%channel' => $channel,
+      '%code' => $result->code,
+      '%error' => $result->error,
+    );
+    watchdog('nodejs', t('Error adding user %uid to channel %channel on Node.js server: [%code] %error', $params));
+    return (object) array();
+  }
+  else {
+    return TRUE;
+  }
+}
+
 class Nodejs {
-
   public static $messages = array();
-
   public static function getMessages() {
     return self::$messages;
   }
-
   public static function enqueueMessage(StdClass $message) {
     self::$messages[] = $message;
   }
-
   public static function sendMessages() {
     $config = nodejs_get_config();
     foreach (self::$messages as &$message) {
@@ -325,12 +416,10 @@ class Nodejs {
       drupal_http_request('http://' . $config['host'] . ':' . $config['port'] . '/publish', array('method' => 'POST', 'data' => drupal_json_encode($message)));
     }
   }
-
   public static function sendMessage(StdClass $message) {
     $config = nodejs_get_config();
     $message->authkey = session_id();
     drupal_http_request('http://' . $config['host'] . ':' . $config['port'] . '/publish', array('method' => 'POST', 'data' => drupal_json_encode($message)));
   }
-
 }
 
