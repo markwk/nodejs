@@ -1,6 +1,15 @@
 <?php
 
 /**
+ * Implements hook_comment_insert().
+ */
+function nodejs_subscribe_comment_insert($comment) {
+  if (nodejs_subscribe_is_node_subscribed_to($comment->nid)) {
+    nodejs_subscribe_send_notification(node_load($comment->nid), 'commented on', array('fragment' => 'comment-' . $comment->cid));
+  }
+}
+
+/**
  * Implements hook_nodejs_user_channels().
  */
 function nodejs_subscribe_nodejs_user_channels($account) {
@@ -173,8 +182,10 @@ function nodejs_subscribe_node_delete($node) {
  * Send a message that the given node was updated.
  * 
  * @param mixed $node 
+ * @param mixed $action 
+ * @param array $link_options 
  */
-function nodejs_subscribe_send_notification($node, $action) {
+function nodejs_subscribe_send_notification($node, $action, $link_options = array()) {
   $subject = t('Node %action.', array('%action' => $action));
   $link = l($node->title, 'node/' . $node->nid);
   $body = t('The node !link was %action.', array('!link' => $link, '%action' => $action));
