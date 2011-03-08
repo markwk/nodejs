@@ -263,8 +263,7 @@ socket.on('connection', function(client) {
       console.log("Got error: " + e.message);
     });
   }).on('disconnect', function() {
-    console.log('disconnect from client ' + client.sessionId + ' ' + client.uid + ' ' + client);
-    console.log('disconnect from client ' + client.sessionId);
+    console.log('disconnect from client ' + client.sessionId + ' ' + client.uid + ' ' + client.channels);
   });
 }).on('error', function(exception) {
   console.log(exception);
