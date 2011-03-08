@@ -9,22 +9,17 @@ var http = require('http'),
     io = require(__dirname + '/socket_io/lib/socket.io'),
     sys = require(process.binding('natives').util ? 'util' : 'sys'),
     vm = require('vm'),
-    server,
-    authenticatedClients = {},
-    send404,
-    publishMessage,
-    publishMessageToChannel,
-    socket;
+    authenticatedClients = {};
 
 try {
   var drupalSettings = vm.runInThisContext(fs.readFileSync(__dirname + '/nodejs.config.js'));
 }
-catch (e) {
-  console.log("Failed to read config file, exiting: " + e);
+catch (exception) {
+  console.log("Failed to read config file, exiting: " + exception);
   process.exit(1);
 }
 
-publishMessage = function (request, response) {
+var publishMessage = function (request, response) {
   var sentCount = 0;
   request.setEncoding('utf8');
   request.on('data', function (chunk) {
@@ -42,12 +37,12 @@ publishMessage = function (request, response) {
   response.send(JSON.stringify({sent: sentCount}));
 }
 
-publishMessageToChannel = function (jsonObject, jsonString) {
+var publishMessageToChannel = function (jsonObject, jsonString) {
   var clientCount = 0;
   if (socket.channels[jsonObject.channel]) {
     console.log('sending to channel ' + jsonObject.channel);
     for (var sessionId in socket.channels[jsonObject.channel]) {
-      if (sessionId in socket.clients[sessionId]) {
+      if (socket.clients[sessionId]) {
         socket.clients[sessionId].send(jsonString);
         console.log('found session ' + sessionId + ' sending message');
         clientCount++;
@@ -63,14 +58,14 @@ publishMessageToChannel = function (jsonObject, jsonString) {
 /**
  * Sends a 404 message.
  */
-send404 = function(request, response) {
+var send404 = function(request, response) {
   response.send('Not Found.', 404);
 };
 
 /**
  * Kicks the given logged in user from the server.
  */
-kickUser = function(request, response) {
+var kickUser = function(request, response) {
   if (request.params.userId) {
     console.log('attempting to kick user: ' + request.params.userId);
     for (var sessionId in authenticatedClients) {
@@ -97,7 +92,7 @@ kickUser = function(request, response) {
 /**
  * Return a list of active channels.
  */
-getActiveChannels = function(request, response) {
+var getActiveChannels = function(request, response) {
   var channels = {};
   for (var channel in socket.channels) {
     channels[channel] = channel;
@@ -108,7 +103,7 @@ getActiveChannels = function(request, response) {
 /**
  * Return summary info about the server.
  */
-returnServerStats = function(request, response) {
+var returnServerStats = function(request, response) {
   var channels = [], clients = [];
   for (var channel in socket.channels) {
     channels.push(channel);
@@ -127,7 +122,7 @@ returnServerStats = function(request, response) {
 /**
  * Return a summary of all users, or more details about a single user.
  */
-returnUserStats = function(request, response) {
+var returnUserStats = function(request, response) {
   var stats = {};
   if (request.params.userId) {
     stats.user = {
@@ -150,7 +145,7 @@ returnUserStats = function(request, response) {
 /**
  * Get the list of Node.js sessionIds for a given uid.
  */
-getNodejsSessionIdsFromUid = function(uid) {
+var getNodejsSessionIdsFromUid = function(uid) {
   var sessionIds = [];
   for (var sessionId in socket.clients) {
     if (socket.clients[sessionId].uid == uid) {
@@ -163,7 +158,7 @@ getNodejsSessionIdsFromUid = function(uid) {
 /**
  * Add a use to a channel.
  */
-addUserToChannel = function(request, response) {
+var addUserToChannel = function(request, response) {
   var uid = request.params.userId || '';
   var channel = request.params.channel || '';
   if (uid && channel) {
@@ -193,29 +188,66 @@ addUserToChannel = function(request, response) {
   }
 };
 
+/**
+ * Add a use to a channel.
+ */
+var removeUserFromChannel = function(request, response) {
+  var uid = request.params.userId || '';
+  var channel = request.params.channel || '';
+  if (uid && channel) {
+    if (!/^\d+$/.test(uid)) {
+      response.send({'status': 'failed', 'error': 'Invalid uid.'});
+      return;
+    }
+    if (!/^[a-z0-9_]+$/i.test(channel)) {
+      response.send({'status': 'failed', 'error': 'Invalid channel name.'});
+      return;
+    }
+    if (socket.channels[channel]) {
+      var sessionIds = getNodejsSessionIdsFromUid(uid);
+      for (var i in sessionIds) {
+        if (socket.channels[channel][sessionIds[i]]) {
+          delete socket.channels[channel][sessionIds[i]];
+          console.log(socket.clients[sessionIds[i]]);
+        }
+      }
+      response.send({'status': 'success'});
+    }
+    else {
+      response.send({'status': 'failed', 'error': 'Nonexistent channel name.'});
+      return;
+    }
+  }
+  else {
+    response.send({'status': 'failed', 'error': 'Invalid data'});
+  }
+}
+
 drupalSettings.serverStatsUrl = '/nodejs/stats/server';
 drupalSettings.userStatsUrl = '/nodejs/stats/user/:sessionId?';
 drupalSettings.getActiveChannelsUrl = '/nodejs/stats/channels';
 drupalSettings.kickUserUrl = '/nodejs/user/kick/:userId';
 drupalSettings.addUserToChannel = '/nodejs/user/channel/add/:channel/:userId';
+drupalSettings.removeUserFromChannel = '/nodejs/user/channel/remove/:channel/:userId';
 
-server = express.createServer();
+var server = express.createServer();
 server.post(drupalSettings.publishUrl, publishMessage);
 server.get(drupalSettings.serverStatsUrl, returnServerStats);
 server.get(drupalSettings.userStatsUrl, returnUserStats);
 server.get(drupalSettings.getActiveChannelsUrl, getActiveChannels);
 server.get(drupalSettings.kickUserUrl, kickUser);
 server.get(drupalSettings.addUserToChannel, addUserToChannel);
+server.get(drupalSettings.removeUserFromChannel, removeUserFromChannel);
 server.get('*', send404);
 
 server.listen(drupalSettings.port, drupalSettings.host);
 
-socket = io.listen(server, {port: drupalSettings.port, resource: drupalSettings.resource});
+var socket = io.listen(server, {port: drupalSettings.port, resource: drupalSettings.resource});
 socket.channels = {};
 
 socket.on('connection', function(client) {
-  client.on('message', function(message) {
-    message = JSON.parse(message);
+  client.on('message', function(messageString) {
+    var message = JSON.parse(messageString);
     console.log('authkey: ' + message.authkey);
     if (authenticatedClients[message.authkey]) {
       console.log('reusing existing authkey: ' + message.authkey + ' with uid ' + message.uid);
