@@ -1,0 +1,192 @@
+<?php
+
+/**
+ * Implements hook_nodejs_user_channels().
+ */
+function nodejs_subscribe_nodejs_user_channels($account) {
+  $channels = array();
+  foreach (nodejs_subscribe_get_user_channels($account->uid) as $subscription) {
+    $channels[] = 'nodejs_subscribe_node_' . $subscription->nid;
+  }
+  return $channels;
+}
+
+/**
+ * Check to see if anyone is subscribed to this node.
+ * 
+ * @param mixed $nid 
+ * @return boolean
+ */
+function nodejs_subscribe_is_node_subscribed_to($nid) {
+  return db_query('SELECT COUNT(*) subscription_count FROM {nodejs_subscribe_subscription} WHERE nid =:nid', array(':nid' => $nid))->fetchField();
+}
+
+/**
+ * Get a list of channels this user is subscribed to.
+ *
+ * @param mixed $uid
+ * @return array
+ */
+function nodejs_subscribe_get_user_channels($uid) {
+  return db_query('SELECT nid, uid FROM {nodejs_subscribe_subscription} WHERE uid = :uid', array(':uid' => $uid))->fetchAllAssoc('uid');
+}
+
+/**
+ * Check if the given account is subscribed to notifications from this node.
+ *
+ * @param mixed $nid 
+ * @param mixed $uid
+ * @return boolean
+ */
+function nodejs_subscribe_get_subscription($nid, $uid) {
+  return db_query('SELECT nid FROM {nodejs_subscribe_subscription} WHERE nid =:nid AND uid = :uid', array(':nid' => $nid, ':uid' => $uid))->fetchField();
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ */
+function nodejs_subscribe_form_node_form_alter(&$form, $form_state) {
+  global $user;
+
+  $default = FALSE;
+  if (!empty($form['#node']->nid)) {
+    $default = nodejs_subscribe_get_subscription($form['#node']->nid, $user->uid) ? '1' : '0';
+  }
+  $form['nodejs_subscribe'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Realtime notifications'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#group' => 'additional_settings',
+    '#attributes' => array(
+      'class' => array('nodejs-subscribe-form'),
+    ),
+    '#access' => TRUE,
+    '#weight' => 30,
+    '#tree' => TRUE,
+    '#element_validate' => array('nodejs_subscribe_node_form_element_validate'),
+  );
+  $form['nodejs_subscribe']['nodejs_subscribe_node'] = array(
+    '#type' => 'checkbox',
+    '#description' => t('Subscribe to realtime notifications on this content'),
+    '#title' => t('Realtime notifications'),
+    '#default_value' => $default,
+  );
+}
+
+/**
+ * Implements hook_node_insert().
+ */
+function nodejs_subscribe_node_insert($node) {
+  global $user;
+
+  if (isset($node->nodejs_subscribe) && $node->nodejs_subscribe['nodejs_subscribe_node']) {
+    nodejs_subscribe_insert($node, $user->uid);
+  }
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function nodejs_subscribe_node_update($node) {
+  global $user;
+
+  if (isset($node->nodejs_subscribe)) {
+    if ($node->nodejs_subscribe['nodejs_subscribe_node']) {
+      nodejs_subscribe_update($node, $user->uid);
+    }
+    else {
+      nodejs_subscribe_delete($node, $user->uid);
+    }
+  }
+
+  if (nodejs_subscribe_is_node_subscribed_to($node->nid)) {
+    nodejs_subscribe_send_notification($node, 'update');
+  }
+}
+
+/**
+ * Update a subscription to a node.
+ * 
+ * @param mixed $node 
+ * @param mixed $uid 
+ * @return boolean
+ */
+function nodejs_subscribe_update($node, $uid) {
+  $transaction = db_transaction();
+  try {
+    nodejs_subscribe_delete($node, $uid);
+    nodejs_subscribe_insert($node, $uid);
+  }
+  catch (Exception $e) {
+    $transaction->rollback();
+    watchdog_exception('nodejs_subscribe', $e);
+  }
+}
+
+/**
+ * Delete a subscription to a node.
+ * 
+ * @param mixed $node 
+ * @param mixed $uid 
+ * @return boolean
+ */
+function nodejs_subscribe_delete($node, $uid) {
+  $config = nodejs_get_config();
+  $url = 'http://' . $config['host'] . ':' . $config['port'] . "/nodejs/user/channel/remove/nodejs_subscribe_node_{$node->nid}/$uid";
+  $response = drupal_http_request($url);
+  return db_query('DELETE FROM {nodejs_subscribe_subscription} WHERE nid =:nid AND uid = :uid', array(':nid' => $node->nid, ':uid' => $uid));
+}
+
+/**
+ * Create subscription to a node for a given user.
+ * 
+ * @param mixed $node 
+ * @param mixed $uid 
+ * @return boolean
+ */
+function nodejs_subscribe_insert($node, $uid) {
+  return db_query('INSERT INTO {nodejs_subscribe_subscription} (nid, uid) VALUES (:nid, :uid)', array(':nid' => $node->nid, ':uid' => $uid));
+}
+
+/**
+ * Form element validation handler for URL alias form element.
+ * 
+ * @param mixed $element 
+ * @param mixed $form_state 
+ * @param mixed $complete_form 
+ */
+function nodejs_subscribe_node_form_element_validate($element, &$form_state, $complete_form) {
+
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function nodejs_subscribe_node_delete($node) {
+  if (nodejs_subscribe_is_node_subscribed_to($node->nid)) {
+    nodejs_subscribe_send_notification($node, 'deleted');
+  }
+}
+
+/**
+ * Send a message that the given node was updated.
+ * 
+ * @param mixed $node 
+ */
+function nodejs_subscribe_send_notification($node, $action) {
+  $subject = t('Node %action.', array('%action' => $action));
+  $link = l($node->title, 'node/' . $node->nid);
+  $body = t('The node !link was %action.', array('!link' => $link, '%action' => $action));
+
+  $message = (object) array(
+    'broadcast' => FALSE,
+    'channel' => 'nodejs_subscribe_node_' . $node->nid,
+    'data' => (object) array(
+      'subject' => $subject,
+      'body' => $body,
+    ),
+  );
+  nodejs_enqueue_message($message);
+}
+
