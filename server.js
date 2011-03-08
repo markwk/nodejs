@@ -23,7 +23,12 @@ var publishMessage = function (request, response) {
   var sentCount = 0;
   request.setEncoding('utf8');
   request.on('data', function (chunk) {
-    var publish_message = JSON.parse(chunk);
+    try {
+      var publish_message = JSON.parse(chunk);
+    }
+    catch (exception) {
+      console.log(exception);
+    }
     if (publish_message.broadcast) {
       console.log('broadcasting to ' + publish_message.channel);
       socket.broadcast(chunk);
@@ -33,8 +38,7 @@ var publishMessage = function (request, response) {
       sentCount = publishMessageToChannel(publish_message, chunk);
     }
   });
-  response.writeHead(200, {'Content-Type': 'text/json'});
-  response.send(JSON.stringify({sent: sentCount}));
+  response.send({sent: sentCount});
 }
 
 var publishMessageToChannel = function (jsonObject, jsonString) {
@@ -247,7 +251,14 @@ socket.channels = {};
 
 socket.on('connection', function(client) {
   client.on('message', function(messageString) {
-    var message = JSON.parse(messageString);
+    var message = false;
+    try {
+      message = JSON.parse(messageString);
+    }
+    catch (exception) {
+      console.log('Failed to parse authentication message: ' + exception);
+      return;
+    } 
     console.log('authkey: ' + message.authkey);
     if (authenticatedClients[message.authkey]) {
       console.log('reusing existing authkey: ' + message.authkey + ' with uid ' + message.uid);
@@ -268,11 +279,12 @@ socket.on('connection', function(client) {
     http.get(options, function (response) {
       response.setEncoding('utf8');
       response.on('data', function (chunk) {
+        var auth_data = false;
         try {
-          var auth_data = JSON.parse(chunk);
+          auth_data = JSON.parse(chunk);
         }
         catch (exception) {
-          console.log(exception);
+          console.log('Failed to parse authentication message: ' + exception);
           return;
         }
         if (auth_data.nodejs_valid_auth_key) {
