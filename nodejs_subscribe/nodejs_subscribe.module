@@ -31,6 +31,17 @@ function nodejs_subscribe_is_node_subscribed_to($nid) {
 }
 
 /**
+ * Check to see if the given uid is subscribed to the given node.
+ * 
+ * @param mixed $uid 
+ * @param mixed $nid 
+ * @return boolean
+ */
+function nodejs_subscribe_is_user_subscribed_to_node($uid, $nid) {
+  return db_query('SELECT nid FROM {nodejs_subscribe_subscription} WHERE uid = :uid AND nid =:nid', array(':uid' => $uid, ':nid' => $nid))->fetchField();
+}
+
+/**
  * Get a list of channels this user is subscribed to.
  *
  * @param mixed $uid
@@ -101,35 +112,16 @@ function nodejs_subscribe_node_update($node) {
   global $user;
 
   if (isset($node->nodejs_subscribe)) {
-    if ($node->nodejs_subscribe['nodejs_subscribe_node']) {
-      nodejs_subscribe_update($node, $user->uid);
-    }
-    else {
+    if (!$node->nodejs_subscribe['nodejs_subscribe_node']) {
       nodejs_subscribe_delete($node, $user->uid);
+    }
+    elseif (!nodejs_subscribe_is_user_subscribed_to_node($user->uid, $node->nid)) {
+      nodejs_subscribe_insert($node, $user->uid);
     }
   }
 
   if (nodejs_subscribe_is_node_subscribed_to($node->nid)) {
     nodejs_subscribe_send_notification($node, 'update');
-  }
-}
-
-/**
- * Update a subscription to a node.
- * 
- * @param mixed $node 
- * @param mixed $uid 
- * @return boolean
- */
-function nodejs_subscribe_update($node, $uid) {
-  $transaction = db_transaction();
-  try {
-    nodejs_subscribe_delete($node, $uid);
-    nodejs_subscribe_insert($node, $uid);
-  }
-  catch (Exception $e) {
-    $transaction->rollback();
-    watchdog_exception('nodejs_subscribe', $e);
   }
 }
 
@@ -141,9 +133,7 @@ function nodejs_subscribe_update($node, $uid) {
  * @return boolean
  */
 function nodejs_subscribe_delete($node, $uid) {
-  $config = nodejs_get_config();
-  $url = 'http://' . $config['host'] . ':' . $config['port'] . "/nodejs/user/channel/remove/nodejs_subscribe_node_{$node->nid}/$uid";
-  $response = drupal_http_request($url);
+  nodejs_remove_user_from_channel($uid, 'nodejs_subscribe_node_' . $node->nid);
   return db_query('DELETE FROM {nodejs_subscribe_subscription} WHERE nid =:nid AND uid = :uid', array(':nid' => $node->nid, ':uid' => $uid));
 }
 
@@ -155,6 +145,7 @@ function nodejs_subscribe_delete($node, $uid) {
  * @return boolean
  */
 function nodejs_subscribe_insert($node, $uid) {
+  nodejs_add_user_to_channel($uid, 'nodejs_subscribe_node_' . $node->nid);
   return db_query('INSERT INTO {nodejs_subscribe_subscription} (nid, uid) VALUES (:nid, :uid)', array(':nid' => $node->nid, ':uid' => $uid));
 }
 

@@ -329,7 +329,7 @@ function nodejs_get_config() {
   static $nodejs_config;
 
   $channels = module_invoke_all('nodejs_user_channels', $user);
-  drupal_alter('nodejs_js_channels', $channels);
+  drupal_alter('nodejs_user_channels', $channels);
 
   if ($nodejs_config === NULL) {
     $defaults = array(
@@ -393,11 +393,37 @@ function nodejs_get_server_stats() {
 }
 
 /**
+ * Remove a user from a channel.
+ * 
+ * @param mixed $uid 
+ * @param mixed $channel 
+ * @return boolean
+ */
+function nodejs_remove_user_from_channel($uid, $channel) {
+  $config = nodejs_get_config();
+  $url = 'http://' . $config['host'] . ':' . $config['port'] . "/nodejs/user/channel/remove/$channel/$uid";
+  $result = drupal_http_request($url);
+  if (isset($result->error)) {
+    $params = array(
+      '%uid' => $uid,
+      '%channel' => $channel,
+      '%code' => $result->code,
+      '%error' => $result->error,
+    );
+    watchdog('nodejs', t('Error removing user %uid from channel %channel on Node.js server: [%code] %error', $params));
+    return (object) array();
+  }
+  else {
+    return TRUE;
+  }
+}
+
+/**
  * Add a user to a channel.
  * 
  * @param mixed $uid 
  * @param mixed $channel 
- * @return void
+ * @return boolean
  */
 function nodejs_add_user_to_channel($uid, $channel) {
   $config = nodejs_get_config();
