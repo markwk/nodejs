@@ -324,25 +324,13 @@ function nodejs_auth_check($auth_key) {
  * Get nodejs server config.
  */
 function nodejs_get_config() {
-  global $user;
-
-  static $nodejs_config;
-
-  $channels = module_invoke_all('nodejs_user_channels', $user);
-  drupal_alter('nodejs_user_channels', $channels);
-
-  if ($nodejs_config === NULL) {
-    $defaults = array(
-      'host' => 'localhost',
-      'port' => 8080,
-      'resource' => '/node.js/realtime',
-      'authkey' => md5(session_id()),
-      'uid' => $user->uid,
-      'channels' => $channels,
-    );
-    $nodejs_config = variable_get('nodejs_config', array()) + $defaults;
-  }
-  return $nodejs_config;
+  $defaults = array(
+    'host' => 'localhost',
+    'port' => 8080,
+    'resource' => '/node.js/realtime',
+    'authkey' => md5(session_id()),
+  );
+  return variable_get('nodejs_config', array()) + $defaults;
 }
 
 /**

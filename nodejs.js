@@ -28,10 +28,7 @@ Drupal.behaviors.nodejs = {
       Drupal.Nodejs.socket = new io.Socket(Drupal.settings.nodejs.host, {port: Drupal.settings.nodejs.port, resource: Drupal.settings.nodejs.resource});
       Drupal.Nodejs.socket.connect();
       var jsonMessage = JSON.stringify({
-        authkey: Drupal.settings.nodejs.authkey,
-        zivtechNodejsSubscriptionKey: Drupal.settings.nodejs.authkey,
-        uid: Drupal.settings.nodejs.uid,
-        channels: Drupal.settings.nodejs.channels
+        authkey: Drupal.settings.nodejs.authkey
       });
       Drupal.Nodejs.socket.send(jsonMessage);
       Drupal.Nodejs.socket.on('message', function(newMessage) {
