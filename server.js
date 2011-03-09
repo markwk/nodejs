@@ -8,7 +8,7 @@ var http = require('http'),
     express = require('express'),
     io = require(__dirname + '/socket_io/lib/socket.io'),
     sys = require(process.binding('natives').util ? 'util' : 'sys'),
-    vm = require('vm'),
+    vm = require('vm');
 
 try {
   var drupalSettings = vm.runInThisContext(fs.readFileSync(__dirname + '/nodejs.config.js'));
