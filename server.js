@@ -19,6 +19,9 @@ catch (exception) {
   process.exit(1);
 }
 
+/**
+ * Http callback - read in a JSON message and publish it to interested clients.
+ */
 var publishMessage = function (request, response) {
   var sentCount = 0;
   request.setEncoding('utf8');
@@ -41,6 +44,9 @@ var publishMessage = function (request, response) {
   response.send({sent: sentCount});
 }
 
+/**
+ * Take some JSON and send it out as a message to clients subscribed to a channel.
+ */
 var publishMessageToChannel = function (jsonObject, jsonString) {
   var clientCount = 0;
   if (socket.channels[jsonObject.channel]) {
@@ -227,6 +233,19 @@ var removeUserFromChannel = function(request, response) {
   }
 }
 
+/**
+ * Setup a socket.clients{}.connection with uid, channels etc.
+ */
+var setupClientConnection(sessionId, message) {
+  socket.clients[sessionId].authKey = message.authKey;
+  socket.clients[sessionId].uid = message.uid;
+  console.log("adding channels for uid " + message.uid + ': ' + message.channels.toString());
+  for (var i in message.channels) {
+    socket.channels[message.channels[i]] = socket.channels[message.channels[i]] || {};
+    socket.channels[message.channels[i]][sessionId] = sessionId;
+  }
+}
+
 drupalSettings.serverStatsUrl = '/nodejs/stats/server';
 drupalSettings.userStatsUrl = '/nodejs/stats/user/:sessionId?';
 drupalSettings.getActiveChannelsUrl = '/nodejs/stats/channels';
@@ -262,13 +281,7 @@ socket.on('connection', function(client) {
     console.log('authkey: ' + message.authkey);
     if (authenticatedClients[message.authkey]) {
       console.log('reusing existing authkey: ' + message.authkey + ' with uid ' + message.uid);
-      socket.clients[client.sessionId].authKey = message.authKey;
-      socket.clients[client.sessionId].uid = message.uid;
-      for (var i = 0; i < message.channels.length; i++) {
-        console.log("adding channels for uid " + message.uid + ' ' + message.channels[i]);
-        socket.channels[message.channels[i]] = socket.channels[message.channels[i]] || {};
-        socket.channels[message.channels[i]][client.sessionId] = client.sessionId;
-      }
+      setupClientConnection(client.sessionId, message);
       return;
     }
     var options = {
@@ -277,8 +290,8 @@ socket.on('connection', function(client) {
       path: drupalSettings.backend.authPath + message.authkey
     };
     http.get(options, function (response) {
-      response.setEncoding('utf8');
       response.on('data', function (chunk) {
+        response.setEncoding('utf8');
         var auth_data = false;
         try {
           auth_data = JSON.parse(chunk);
@@ -290,13 +303,7 @@ socket.on('connection', function(client) {
         if (auth_data.nodejs_valid_auth_key) {
           console.log("got valid login for uid " + auth_data.uid);
           authenticatedClients[message.authkey] = auth_data.uid;
-          socket.clients[client.sessionId].authKey = message.authKey;
-          socket.clients[client.sessionId].uid = auth_data.uid;
-          for (var i = 0; i < message.channels.length; i++) {
-            console.log("adding channels for uid " + auth_data.uid + ' ' + message.channels[i]);
-            socket.channels[message.channels[i]] = socket.channels[message.channels[i]] || {};
-            socket.channels[message.channels[i]][client.sessionId] = client.sessionId;
-          }
+          setupClientConnection(client.sessionId, message);
         }
         else {
           console.log("got invalid login for uid " + auth_data.uid);
