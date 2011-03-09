@@ -173,10 +173,12 @@ var addUserToChannel = function(request, response) {
   var channel = request.params.channel || '';
   if (uid && channel) {
     if (!/^\d+$/.test(uid)) {
+      console.log("Invalid uid: " + uid);
       response.send({'status': 'failed', 'error': 'Invalid uid.'});
       return;
     }
     if (!/^[a-z0-9_]+$/i.test(channel)) {
+      console.log("Invalid channel: " + channel);
       response.send({'status': 'failed', 'error': 'Invalid channel name.'});
       return;
     }
@@ -187,14 +189,17 @@ var addUserToChannel = function(request, response) {
       for (var i in sessionIds) {
         socket.channels[channel][sessionIds[i]] = sessionIds[i];
       }
+      console.log("Added channel '" + channel + "' to sessionIds " + sessionIds.join());
       response.send({'status': 'success'});
     }
     else {
+      console.log("No active sessions for uid: " + uid);
       response.send({'status': 'failed', 'error': 'No active sessions for uid.'});
     }
   }
   else {
-    response.send({'status': 'failed', 'error': 'Invalid data'});
+    console.log("Missing uid or channel");
+    response.send({'status': 'failed', 'error': 'Missing uid or channel'});
   }
 };
 
@@ -236,7 +241,7 @@ var removeUserFromChannel = function(request, response) {
 /**
  * Setup a socket.clients{}.connection with uid, channels etc.
  */
-var setupClientConnection(sessionId, message) {
+var setupClientConnection = function(sessionId, message) {
   socket.clients[sessionId].authKey = message.authKey;
   socket.clients[sessionId].uid = message.uid;
   console.log("adding channels for uid " + message.uid + ': ' + message.channels.toString());
