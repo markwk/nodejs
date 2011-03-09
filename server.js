@@ -136,29 +136,6 @@ var returnServerStats = function(request, response) {
 };
 
 /**
- * Return a summary of all users, or more details about a single user.
- */
-var returnUserStats = function(request, response) {
-  var stats = {};
-  if (request.params.userId) {
-    stats.user = {
-      'id': '',
-      'channels': [],
-      'lastAuthCheck': '',
-      'sessionIds': [],
-      'lastKickTime': '',
-    };
-  }
-  else {
-    stats.users = {
-      'count': 53,
-      'ids': []
-    };
-  }
-  response.send(stats);
-};
-
-/**
  * Get the list of Node.js sessionIds for a given uid.
  */
 var getNodejsSessionIdsFromUid = function(uid) {
