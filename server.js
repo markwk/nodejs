@@ -14,9 +14,9 @@ try {
   var drupalSettings = vm.runInThisContext(fs.readFileSync(__dirname + '/nodejs.config.js'));
   drupalSettings.serverStatsUrl = '/nodejs/stats/server';
   drupalSettings.getActiveChannelsUrl = '/nodejs/stats/channels';
-  drupalSettings.kickUserUrl = '/nodejs/user/kick/:userId';
-  drupalSettings.addUserToChannel = '/nodejs/user/channel/add/:channel/:userId';
-  drupalSettings.removeUserFromChannel = '/nodejs/user/channel/remove/:channel/:userId';
+  drupalSettings.kickUserUrl = '/nodejs/user/kick/:uid';
+  drupalSettings.addUserToChannel = '/nodejs/user/channel/add/:channel/:uid';
+  drupalSettings.removeUserFromChannel = '/nodejs/user/channel/remove/:channel/:uid';
 }
 catch (exception) {
   console.log("Failed to read config file, exiting: " + exception);
@@ -39,7 +39,7 @@ var publishMessage = function (request, response) {
       return;
     }
     if (publish_message.broadcast) {
-      console.log('broadcasting to ' + publish_message.channel);
+      console.log('Broadcasting to ' + publish_message.channel);
       socket.broadcast(chunk);
       sentCount = socket.clients.length;
     }
@@ -51,22 +51,21 @@ var publishMessage = function (request, response) {
 }
 
 /**
- * Take some JSON and send it out as a message to clients subscribed to a channel.
+ * Publish a message to clients subscribed to a channel.
  */
 var publishMessageToChannel = function (jsonObject, jsonString) {
   var clientCount = 0;
   if (socket.channels[jsonObject.channel]) {
-    console.log('sending to channel ' + jsonObject.channel);
     for (var sessionId in socket.channels[jsonObject.channel]) {
       if (socket.clients[sessionId]) {
         socket.clients[sessionId].send(jsonString);
-        console.log('found session ' + sessionId + ' sending message');
         clientCount++;
       }
     }
+    console.log('Sent message to ' + clientCount + ' clients in channel "' + jsonObject.channel + '"');
   }
   else {
-    console.log('no channel to send to: ' + jsonObject.channel);
+    console.log('No channel "' + jsonObject.channel + '" to send to');
   }
   return clientCount;
 }
@@ -82,27 +81,24 @@ var send404 = function(request, response) {
  * Kicks the given logged in user from the server.
  */
 var kickUser = function(request, response) {
-  if (request.params.userId) {
-    console.log('attempting to kick user: ' + request.params.userId);
-    for (var sessionId in socket.authenticatedClients) {
-      if (socket.authenticatedClients[sessionId] == request.params.userId) {
-        console.log('found user in socket.authenticatedClients: ' + request.params.userId);
-        for (var clientId in socket.clients) {
-          console.log('checking client uid: ' + socket.clients[clientId].uid);
-          if (socket.clients[clientId].uid == request.params.userId) {
-            delete socket.clients[clientId];
-            delete socket.authenticatedClients[sessionId];
-            console.log('found user in socket.clients, kicked off uid: ' + request.params.userId);
-            response.send({'status': 'success'});
-            return;
-          }
-        }
-        console.log('failed to find client in socket.clients');
+  if (request.params.uid) {
+    // Delete the user from the authenticatedClients hash.
+    for (var authToken in socket.authenticatedClients) {
+      if (socket.authenticatedClients[authToken].uid == request.params.uid) {
+        delete socket.authenticatedClients[authToken];
       }
     }
+    // Destroy any socket connections associated with this uid.
+    for (var clientId in socket.clients) {
+      if (socket.clients[clientId].uid == request.params.uid) {
+        delete socket.clients[clientId];
+      }
+    }
+    response.send({'status': 'success'});
+    return;
   }
-  console.log('failed to kick user: unknown');
-  response.send({'status': 'failed', 'error': 'Unknown user'});
+  console.log('Failed to kick user, no uid supplied');
+  response.send({'status': 'failed', 'error': 'missing uid'});
 };
 
 /**
@@ -152,7 +148,7 @@ var getNodejsSessionIdsFromUid = function(uid) {
  * Add a use to a channel.
  */
 var addUserToChannel = function(request, response) {
-  var uid = request.params.userId || '';
+  var uid = request.params.uid || '';
   var channel = request.params.channel || '';
   if (uid && channel) {
     if (!/^\d+$/.test(uid)) {
@@ -165,7 +161,6 @@ var addUserToChannel = function(request, response) {
       response.send({'status': 'failed', 'error': 'Invalid channel name.'});
       return;
     }
-    socket.channels[channel] = socket.channels[channel] || {};
     socket.channels[channel] = socket.channels[channel] || {};
     var sessionIds = getNodejsSessionIdsFromUid(uid);
     if (sessionIds.length > 0) {
@@ -190,7 +185,7 @@ var addUserToChannel = function(request, response) {
  * Remove a user from a channel.
  */
 var removeUserFromChannel = function(request, response) {
-  var uid = request.params.userId || '';
+  var uid = request.params.uid || '';
   var channel = request.params.channel || '';
   if (uid && channel) {
     if (!/^\d+$/.test(uid)) {
@@ -228,13 +223,13 @@ var removeUserFromChannel = function(request, response) {
 /**
  * Setup a socket.clients{}.connection with uid, channels etc.
  */
-var setupClientConnection = function(sessionId, message) {
-  socket.clients[sessionId].authKey = message.authKey;
-  socket.clients[sessionId].uid = message.uid;
-  console.log("adding channels for uid " + message.uid + ': ' + message.channels.toString());
-  for (var i in message.channels) {
-    socket.channels[message.channels[i]] = socket.channels[message.channels[i]] || {};
-    socket.channels[message.channels[i]][sessionId] = sessionId;
+var setupClientConnection = function(sessionId, authData) {
+  socket.clients[sessionId].authKey = authData.authKey;
+  socket.clients[sessionId].uid = authData.uid;
+  console.log("adding channels for uid " + authData.uid + ': ' + authData.channels.toString());
+  for (var i in authData.channels) {
+    socket.channels[authData.channels[i]] = socket.channels[authData.channels[i]] || {};
+    socket.channels[authData.channels[i]][sessionId] = sessionId;
   }
 }
 
@@ -263,8 +258,8 @@ socket.on('connection', function(client) {
       return;
     } 
     if (socket.authenticatedClients[message.authkey]) {
-      console.log('reusing existing authkey: ' + message.authkey + ' with uid ' + message.uid);
-      setupClientConnection(client.sessionId, message);
+      console.log('Reusing existing authentication data for key "' + message.authkey + '"');
+      setupClientConnection(client.sessionId, socket.authenticatedClients[message.authkey]);
       return;
     }
     var options = {
@@ -284,17 +279,17 @@ socket.on('connection', function(client) {
           return;
         }
         if (auth_data.nodejs_valid_auth_key) {
-          console.log("got valid login for uid " + auth_data.uid);
-          socket.authenticatedClients[message.authkey] = auth_data.uid;
-          setupClientConnection(client.sessionId, message);
+          console.log("Valid login for uid: " + auth_data.uid);
+          socket.authenticatedClients[message.authkey] = auth_data;
+          setupClientConnection(client.sessionId, auth_data);
         }
         else {
-          console.log("got invalid login for uid " + auth_data.uid);
+          console.log("Invalid login for uid " + auth_data.uid);
           delete socket.authenticatedClients[message.authkey];
         }
       });
-    }).on('error', function(e) {
-      console.log("Got error: " + e);
+    }).on('error', function(exception) {
+      console.log(exception);
     });
   });
 }).on('error', function(exception) {
