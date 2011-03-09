@@ -204,17 +204,19 @@ var addUserToChannel = function(request, response) {
 };
 
 /**
- * Add a use to a channel.
+ * Remove a use from a channel.
  */
 var removeUserFromChannel = function(request, response) {
   var uid = request.params.userId || '';
   var channel = request.params.channel || '';
   if (uid && channel) {
     if (!/^\d+$/.test(uid)) {
+      console.log('Invalid uid: ' + uid);
       response.send({'status': 'failed', 'error': 'Invalid uid.'});
       return;
     }
     if (!/^[a-z0-9_]+$/i.test(channel)) {
+      console.log('Invalid channel: ' + channel);
       response.send({'status': 'failed', 'error': 'Invalid channel name.'});
       return;
     }
@@ -223,17 +225,19 @@ var removeUserFromChannel = function(request, response) {
       for (var i in sessionIds) {
         if (socket.channels[channel][sessionIds[i]]) {
           delete socket.channels[channel][sessionIds[i]];
-          console.log(socket.clients[sessionIds[i]]);
         }
       }
+      console.log("Successfully removed '" + uid + "' from channel '" + channel + "'");
       response.send({'status': 'success'});
     }
     else {
-      response.send({'status': 'failed', 'error': 'Nonexistent channel name.'});
+      console.log("Non-existent channel name '" + channel + "'");
+      response.send({'status': 'failed', 'error': 'Non-existent channel name.'});
       return;
     }
   }
   else {
+    console.log("Missing uid or channel");
     response.send({'status': 'failed', 'error': 'Invalid data'});
   }
 }
