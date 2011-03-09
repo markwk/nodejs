@@ -30,7 +30,9 @@ var publishMessage = function (request, response) {
       var publish_message = JSON.parse(chunk);
     }
     catch (exception) {
-      console.log(exception);
+      console.log("Invalid JSON '" + chunk + "': " + exception);
+      response.send({error: "Invalid JSON, error: " + e.toString()});
+      return;
     }
     if (publish_message.broadcast) {
       console.log('broadcasting to ' + publish_message.channel);
@@ -204,7 +206,7 @@ var addUserToChannel = function(request, response) {
 };
 
 /**
- * Remove a use from a channel.
+ * Remove a user from a channel.
  */
 var removeUserFromChannel = function(request, response) {
   var uid = request.params.userId || '';
@@ -287,7 +289,6 @@ socket.on('connection', function(client) {
       console.log('Failed to parse authentication message: ' + exception);
       return;
     } 
-    console.log('authkey: ' + message.authkey);
     if (authenticatedClients[message.authkey]) {
       console.log('reusing existing authkey: ' + message.authkey + ' with uid ' + message.uid);
       setupClientConnection(client.sessionId, message);
@@ -320,10 +321,8 @@ socket.on('connection', function(client) {
         }
       });
     }).on('error', function(e) {
-      console.log("Got error: " + e.message);
+      console.log("Got error: " + e);
     });
-  }).on('disconnect', function() {
-    console.log('disconnect from client ' + client.sessionId + ' ' + client.uid + ' ' + client.channels);
   });
 }).on('error', function(exception) {
   console.log(exception);
