@@ -260,6 +260,7 @@ function nodejs_get_config() {
     'host' => 'localhost',
     'port' => 8080,
     'resource' => '/node.js/realtime',
+    'authkey' => md5(session_id()),
   );
   return variable_get('nodejs_config', array()) + $defaults;
 }
