@@ -174,6 +174,13 @@ var addUserToChannel = function(request, response) {
       console.log("No active sessions for uid: " + uid);
       response.send({'status': 'failed', 'error': 'No active sessions for uid.'});
     }
+    for (var authKey in socket.authenticatedClients) {
+      if (socket.authenticatedClients[authKey].uid == uid) {
+        if (socket.authenticatedClients[authKey].channels.indexOf(channel) != -1) {
+          socket.authenticatedClients[authKey].channels.push(channel);
+        }
+      }
+    }
   }
   else {
     console.log("Missing uid or channel");
@@ -203,6 +210,14 @@ var removeUserFromChannel = function(request, response) {
       for (var i in sessionIds) {
         if (socket.channels[channel][sessionIds[i]]) {
           delete socket.channels[channel][sessionIds[i]];
+        }
+      }
+      for (var authKey in socket.authenticatedClients) {
+        if (socket.authenticatedClients[authKey].uid == uid) {
+          var index = socket.authenticatedClients[authKey].channels.indexOf(channel);
+          if (index != -1) {
+            delete socket.authenticatedClients[authKey].channels[index];
+          }
         }
       }
       console.log("Successfully removed uid '" + uid + "' from channel '" + channel + "'");
