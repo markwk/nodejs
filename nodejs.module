@@ -69,11 +69,10 @@ function nodejs_theme($existing, $type, $theme, $path) {
  * Implements hook_init().
  */
 function nodejs_init() {
-  $_SESSION['nodejs'] = 'lazy sessions are lazy';
-  register_shutdown_function(array('Nodejs', 'sendMessages'));
-  $nodejs_config = nodejs_get_config();
-  if (isset($nodejs_config['nodejs_service_key'])) {
-    unset($nodejs_config['nodejs_service_key']);
+  drupal_register_shutdown_function(array('Nodejs', 'sendMessages'));
+  $_SESSION['nodejs_config'] = $nodejs_config = nodejs_get_config();
+  if (isset($nodejs_config['serviceKey'])) {
+    unset($nodejs_config['serviceKey']);
   }
   drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/support/socket.io-client/socket.io.js', array('type' => 'file'));
   drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', array('type' => 'file'));
@@ -247,6 +246,8 @@ function nodejs_auth_check($auth_key) {
   $auth_user = $uid > 0 ? user_load($uid) : drupal_anonymous_user();
   $auth_user->nodejs_valid_auth_key = $uid !== FALSE;
   $auth_user->channels = module_invoke_all('nodejs_user_channels', $auth_user);
+  $nodejs_config = nodejs_get_config(); 
+  $auth_user->serviceKey = $nodejs_config['serviceKey'];
 
   drupal_json_output($auth_user);
   drupal_exit();
@@ -261,6 +262,7 @@ function nodejs_get_config() {
     'port' => 8080,
     'resource' => '/node.js/realtime',
     'authkey' => md5(session_id()),
+    'serviceKey' => '',
   );
   return variable_get('nodejs_config', array()) + $defaults;
 }
@@ -321,7 +323,6 @@ function nodejs_get_server_stats() {
  */
 function nodejs_remove_user_from_channel($uid, $channel) {
   $result = Nodejs::removeUserFromChannel($uid, $channel);
-  $result = drupal_http_request($url);
   if (isset($result->error)) {
     $params = array(
       '%uid' => $uid,
@@ -365,10 +366,16 @@ class Nodejs {
 
   public static $messages = array();
 
+  public static $config = NULL;
+
+  public static $baseUrl = NULL;
+
+  public static $headers = NULL;
+
   public static function initConfig() {
     if (!isset(self::$config)) {
       self::$config = nodejs_get_config();
-      self::$headers = variable_get('nodejs_service_key', FALSE) ? array('Nodejs-Service-Key' => $service_key) : array();
+      self::$headers = array('Nodejs-Service-Key' => self::$config['serviceKey']);
       self::$baseUrl = 'http://' . self::$config['host'] . ':' . self::$config['port'];
     }
   }
