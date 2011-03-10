@@ -6,9 +6,14 @@
  * @param mixed $uid 
  */
 function nodejs_kick_user($uid) {
-  $config = nodejs_get_config();
-  $url = 'http://' . $config['host'] . ':' . $config['port'] . "/nodejs/user/kick/$uid";
-  $response = drupal_http_request($url);
+  $response = Nodejs::kickUser($uid);
+  if (isset($response->error)) {
+    watchdog('nodejs', t('Error kicking uid "%uid" from the Node.js server: [%code] %error', array('%uid' => $uid, '%code' => $response->code, '%error' => $response->error)));
+    return FALSE;
+  }
+  else {
+    return $result;
+  }
 }
 
 /**
@@ -67,6 +72,9 @@ function nodejs_init() {
   $_SESSION['nodejs'] = 'lazy sessions are lazy';
   register_shutdown_function(array('Nodejs', 'sendMessages'));
   $nodejs_config = nodejs_get_config();
+  if (isset($nodejs_config['nodejs_service_key'])) {
+    unset($nodejs_config['nodejs_service_key']);
+  }
   drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/support/socket.io-client/socket.io.js', array('type' => 'file'));
   drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', array('type' => 'file'));
   drupal_add_js(array('nodejs' => $nodejs_config), array('type' => 'setting'));
@@ -109,24 +117,6 @@ function nodejs_menu() {
       'access callback' => TRUE,
       'type' => MENU_CALLBACK,
     ),
-    'nodejs/stats/users' => array(
-      'title' => 'Node.js users stats',
-      'page callback' => 'nodejs_users_stats_page',
-      'access callback' => TRUE,
-      'type' => MENU_CALLBACK,
-    ),
-    'nodejs/stats/user/%user' => array(
-      'title' => 'Node.js user stats',
-      'page callback' => 'nodejs_user_stats_page',
-      'access callback' => TRUE,
-      'type' => MENU_CALLBACK,
-    ),
-    'nodejs/stats/channel/%channel' => array(
-      'title' => 'Node.js channel stats',
-      'page callback' => 'nodejs_channel_stats_page',
-      'access callback' => TRUE,
-      'type' => MENU_CALLBACK,
-    ),
   );
 }
 
@@ -137,9 +127,7 @@ function nodejs_menu() {
  * @return array
  */
 function nodejs_get_channels() {
-  $config = nodejs_get_config();
-  $url = 'http://' . $config['host'] . ':' . $config['port'] . "/nodejs/stats/channels";
-  $response = drupal_http_request($url);
+  $response = Nodejs::getChannels();
   if (isset($response->error)) {
     watchdog('nodejs', t('Error getting channel list from Node.js server: [%code] %error', array('%code' => $response->code, '%error' => $response->error)));
     return array();
@@ -210,57 +198,11 @@ function nodejs_add_user_to_channel_form_validate($form, &$form_state) {
 }
 
 /**
- * Menu callback: renders overall users stats from the Node.js server.
- */
-function nodejs_users_stats_page() {
-  $page = array(
-    '#type' => 'page',
-    'content' => array(
-      'nodejs' => array(
-        '#markup' => __FUNCTION__,
-      ),
-    ),
-  );
-  return $page;
-}
-
-/**
- * Menu callback: renders stats for the given user from the Node.js server.
- */
-function nodejs_user_stats_page($user) {
-  $page = array(
-    '#type' => 'page',
-    'content' => array(
-      'nodejs' => array(
-        '#markup' => __FUNCTION__,
-      ),
-    ),
-  );
-  return $page;
-}
-
-/**
- * Menu callback: renders stats for the given channel from the Node.js server.
- */
-function nodejs_channel_stats_page($channel) {
-  $page = array(
-    '#type' => 'page',
-    'content' => array(
-      'nodejs' => array(
-        '#markup' => __FUNCTION__,
-      ),
-    ),
-  );
-  return $page;
-}
-
-/**
  * Enqueue a message for sending at the end of the request.
  * 
  * @param StdClass $message 
  */
 function nodejs_enqueue_message(StdClass $message) {
-  drupal_alter('nodejs_message', $message);
   Nodejs::enqueueMessage($message);
 }
 
@@ -270,7 +212,6 @@ function nodejs_enqueue_message(StdClass $message) {
  * @param StdClass $message 
  */
 function nodejs_send_message(StdClass $message) {
-  drupal_alter('nodejs_message', $message);
   return Nodejs::sendMessage($message);
 }
 
@@ -287,15 +228,6 @@ function nodejs_server_stats_page() {
     ),
   );
   return $page;
-}
-
-/**
- * Override or insert variables into the page template.
- */
-function nodejs_preprocess_page(&$variables) {
-  if (variable_get('nodejs_debug', FALSE)) {
-    $variables['page']['content']['nodejs_debug'] = array('#markup' => '<div id="nodejs-debug-wrapper"><h3>Node js debug</h3></div>');
-  }
 }
 
 /**
@@ -328,7 +260,6 @@ function nodejs_get_config() {
     'host' => 'localhost',
     'port' => 8080,
     'resource' => '/node.js/realtime',
-    'authkey' => md5(session_id()),
   );
   return variable_get('nodejs_config', array()) + $defaults;
 }
@@ -388,8 +319,7 @@ function nodejs_get_server_stats() {
  * @return boolean
  */
 function nodejs_remove_user_from_channel($uid, $channel) {
-  $config = nodejs_get_config();
-  $url = 'http://' . $config['host'] . ':' . $config['port'] . "/nodejs/user/channel/remove/$channel/$uid";
+  $result = Nodejs::removeUserFromChannel($uid, $channel);
   $result = drupal_http_request($url);
   if (isset($result->error)) {
     $params = array(
@@ -414,9 +344,7 @@ function nodejs_remove_user_from_channel($uid, $channel) {
  * @return boolean
  */
 function nodejs_add_user_to_channel($uid, $channel) {
-  $config = nodejs_get_config();
-  $url = 'http://' . $config['host'] . ':' . $config['port'] . "/nodejs/user/channel/add/$channel/$uid";
-  $result = drupal_http_request($url);
+  $result = Nodejs::addUserToChannel($uid, $channel);
   if (isset($result->error)) {
     $params = array(
       '%uid' => $uid,
@@ -433,24 +361,60 @@ function nodejs_add_user_to_channel($uid, $channel) {
 }
 
 class Nodejs {
+
   public static $messages = array();
+
+  public static function initConfig() {
+    if (!isset(self::$config)) {
+      self::$config = nodejs_get_config();
+      self::$headers = variable_get('nodejs_service_key', FALSE) ? array('Nodejs-Service-Key' => $service_key) : array();
+      self::$baseUrl = 'http://' . self::$config['host'] . ':' . self::$config['port'];
+    }
+  }
+
   public static function getMessages() {
     return self::$messages;
   }
+
   public static function enqueueMessage(StdClass $message) {
     self::$messages[] = $message;
   }
+
   public static function sendMessages() {
-    $config = nodejs_get_config();
-    foreach (self::$messages as &$message) {
-      $message->authkey = session_id();
-      drupal_http_request('http://' . $config['host'] . ':' . $config['port'] . '/publish', array('method' => 'POST', 'data' => drupal_json_encode($message)));
+    foreach (self::$messages as $message) {
+      self::sendMessage($message);
     }
   }
+
   public static function sendMessage(StdClass $message) {
-    $config = nodejs_get_config();
-    $message->authkey = session_id();
-    drupal_http_request('http://' . $config['host'] . ':' . $config['port'] . '/publish', array('method' => 'POST', 'data' => drupal_json_encode($message)));
+    self::initConfig();
+    drupal_alter('nodejs_message', $message);
+    $options = array(
+      'method' => 'POST', 
+      'data' => drupal_json_encode($message),
+      'headers' => self::$headers,
+    );
+    return drupal_http_request(self::$baseUrl . '/nodejs/publish', $options);
+  }
+  
+  public static function kickUser($uid) {
+    self::initConfig();
+    return drupal_http_request(self::$baseUrl . "/nodejs/user/kick/$uid", array('headers' => self::$headers));
+  }
+
+  public static function addUserToChannel($uid, $channel) {
+    self::initConfig();
+    return drupal_http_request(self::$baseUrl . "/nodejs/user/channel/add/$channel/$uid", array('headers' => self::$headers));
+  }
+
+  public static function addUserToChannel($uid, $channel) {
+    self::initConfig();
+    return drupal_http_request(self::$baseUrl . "/nodejs/user/channel/remove/$channel/$uid", array('headers' => self::$headers));
+  }
+
+  public static function getChannels() {
+    self::initConfig();
+    $url = 'http://' . $config['host'] . ':' . $config['port'] . "/nodejs/stats/channels";
   }
 }
 
