@@ -1,6 +1,9 @@
 /**
- * Don't use this code, its nasty, nasty proof-of-concept stuff only.
- * It will eat your lunch and kill your kittens.
+ * Provides Node.js - Drupal integration. 
+ *
+ * This code is alpha quality.
+ *
+ * Expect bugs, big API changes, etc.
  */
 var http = require('http'),
     url = require('url'),
@@ -11,12 +14,12 @@ var http = require('http'),
     vm = require('vm');
 
 try {
-  var drupalSettings = vm.runInThisContext(fs.readFileSync(__dirname + '/nodejs.config.js'));
-  drupalSettings.serverStatsUrl = '/nodejs/stats/server';
-  drupalSettings.getActiveChannelsUrl = '/nodejs/stats/channels';
-  drupalSettings.kickUserUrl = '/nodejs/user/kick/:uid';
-  drupalSettings.addUserToChannel = '/nodejs/user/channel/add/:channel/:uid';
-  drupalSettings.removeUserFromChannel = '/nodejs/user/channel/remove/:channel/:uid';
+  var backendSettings = vm.runInThisContext(fs.readFileSync(__dirname + '/nodejs.config.js'));
+  backendSettings.serverStatsUrl = '/nodejs/stats/server';
+  backendSettings.getActiveChannelsUrl = '/nodejs/stats/channels';
+  backendSettings.kickUserUrl = '/nodejs/user/kick/:uid';
+  backendSettings.addUserToChannel = '/nodejs/user/channel/add/:channel/:uid';
+  backendSettings.removeUserFromChannel = '/nodejs/user/channel/remove/:channel/:uid';
 }
 catch (exception) {
   console.log("Failed to read config file, exiting: " + exception);
@@ -249,16 +252,16 @@ var setupClientConnection = function(sessionId, authData) {
 }
 
 var server = express.createServer();
-server.post(drupalSettings.publishUrl, publishMessage)
-  .get(drupalSettings.serverStatsUrl, returnServerStats)
-  .get(drupalSettings.getActiveChannelsUrl, getActiveChannels)
-  .get(drupalSettings.kickUserUrl, kickUser)
-  .get(drupalSettings.addUserToChannel, addUserToChannel)
-  .get(drupalSettings.removeUserFromChannel, removeUserFromChannel)
+server.post(backendSettings.publishUrl, publishMessage)
+  .get(backendSettings.serverStatsUrl, returnServerStats)
+  .get(backendSettings.getActiveChannelsUrl, getActiveChannels)
+  .get(backendSettings.kickUserUrl, kickUser)
+  .get(backendSettings.addUserToChannel, addUserToChannel)
+  .get(backendSettings.removeUserFromChannel, removeUserFromChannel)
   .get('*', send404)
-  .listen(drupalSettings.port, drupalSettings.host);
+  .listen(backendSettings.port, backendSettings.host);
 
-var socket = io.listen(server, {port: drupalSettings.port, resource: drupalSettings.resource});
+var socket = io.listen(server, {port: backendSettings.port, resource: backendSettings.resource});
 socket.channels = {};
 socket.authenticatedClients = {};
 
@@ -278,9 +281,9 @@ socket.on('connection', function(client) {
       return;
     }
     var options = {
-      port: drupalSettings.backend.port,
-      host: drupalSettings.backend.host,
-      path: drupalSettings.backend.authPath + message.authkey
+      port: backendSettings.backend.port,
+      host: backendSettings.backend.host,
+      path: backendSettings.backend.authPath + message.authkey
     };
     http.get(options, function (response) {
       response.on('data', function (chunk) {
