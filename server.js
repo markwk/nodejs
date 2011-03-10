@@ -28,11 +28,10 @@ catch (exception) {
 }
 
 /**
- * Callback that wraps all GET requests and checks for a valid service key.
+ * Callback that wraps all requests and checks for a valid service key.
  */
 var checkServiceKeyCallback = function (request, response, next) {
   if (checkServiceKey(request.header('Nodejs-Service-Key', ''))) {
-    console.log('Valid service key, passing on to next handler.');
     next();
   }
   else {
