@@ -5,6 +5,7 @@
  *
  * Expect bugs, big API changes, etc.
  */
+
 var http = require('http'),
     url = require('url'),
     fs = require('fs'),
@@ -20,10 +21,38 @@ try {
   backendSettings.kickUserUrl = '/nodejs/user/kick/:uid';
   backendSettings.addUserToChannel = '/nodejs/user/channel/add/:channel/:uid';
   backendSettings.removeUserFromChannel = '/nodejs/user/channel/remove/:channel/:uid';
+  backendSettings.serviceKeyRequired = false;
 }
 catch (exception) {
   console.log("Failed to read config file, exiting: " + exception);
   process.exit(1);
+}
+
+/**
+ * Callback that wraps all GET requests and checks for a valid service key.
+ */
+var checkServiceKeyCallback = function (request, response, next) {
+  if (checkServiceKey(request.header('Nodejs-Service-Key', ''))) {
+    console.log("Valid service key, passing on to next handler.");
+    next();
+  }
+  else {
+    console.log("Invalid service key, passing on to error handler.");
+    next(new Error("Invalid service key."));
+  }
+}
+
+/**
+ * Check a service key against the configured service key.
+ */
+var checkServiceKey = function (serviceKey) {
+  if (backendSettings.serviceKeyRequired) {
+    if (serviceKey != backendSettings.serviceKey) {
+      console.log('Invalide service key "' + serviceKey + '"');
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -34,20 +63,20 @@ var publishMessage = function (request, response) {
   request.setEncoding('utf8');
   request.on('data', function (chunk) {
     try {
-      var publish_message = JSON.parse(chunk);
+      var publishMessage = JSON.parse(chunk);
     }
     catch (exception) {
       console.log("Invalid JSON '" + chunk + "': " + exception);
       response.send({error: "Invalid JSON, error: " + e.toString()});
       return;
     }
-    if (publish_message.broadcast) {
-      console.log('Broadcasting to ' + publish_message.channel);
+    if (publishMessage.broadcast) {
+      console.log('Broadcasting to ' + publishMessage.channel);
       socket.broadcast(chunk);
       sentCount = socket.clients.length;
     }
     else {
-      sentCount = publishMessageToChannel(publish_message, chunk);
+      sentCount = publishMessageToChannel(publishMessage, chunk);
     }
   });
   response.send({sent: sentCount});
@@ -253,6 +282,7 @@ var setupClientConnection = function(sessionId, authData) {
 
 var server = express.createServer();
 server.post(backendSettings.publishUrl, publishMessage)
+  .all('/nodejs/*', checkServiceKeyCallback)
   .get(backendSettings.serverStatsUrl, returnServerStats)
   .get(backendSettings.getActiveChannelsUrl, getActiveChannels)
   .get(backendSettings.kickUserUrl, kickUser)
@@ -264,6 +294,7 @@ server.post(backendSettings.publishUrl, publishMessage)
 var socket = io.listen(server, {port: backendSettings.port, resource: backendSettings.resource});
 socket.channels = {};
 socket.authenticatedClients = {};
+socket.statistics = {};
 
 socket.on('connection', function(client) {
   client.on('message', function(messageString) {
@@ -288,21 +319,27 @@ socket.on('connection', function(client) {
     http.get(options, function (response) {
       response.on('data', function (chunk) {
         response.setEncoding('utf8');
-        var auth_data = false;
+        var authData = false;
         try {
-          auth_data = JSON.parse(chunk);
+          authData = JSON.parse(chunk);
         }
         catch (exception) {
           console.log('Failed to parse authentication message: ' + exception);
           return;
         }
-        if (auth_data.nodejs_valid_auth_key) {
-          console.log("Valid login for uid: " + auth_data.uid);
-          socket.authenticatedClients[message.authkey] = auth_data;
-          setupClientConnection(client.sessionId, auth_data);
+        if (backendSettings.serviceKeyRequired) {
+          if (authData.serviceKey != backendSettings.serviceKey) {
+            console.log('Invalide service key "' + authData.serviceKey + '"');
+            return;
+          }
+        }
+        if (authData.nodejs_valid_auth_key) {
+          console.log("Valid login for uid: " + authData.uid);
+          socket.authenticatedClients[message.authkey] = authData;
+          setupClientConnection(client.sessionId, authData);
         }
         else {
-          console.log("Invalid login for uid " + auth_data.uid);
+          console.log("Invalid login for uid " + authData.uid);
           delete socket.authenticatedClients[message.authkey];
         }
       });
