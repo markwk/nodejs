@@ -408,7 +408,7 @@ class Nodejs {
     return drupal_http_request(self::$baseUrl . "/nodejs/user/channel/add/$channel/$uid", array('headers' => self::$headers));
   }
 
-  public static function addUserToChannel($uid, $channel) {
+  public static function removeUserFromChannel($uid, $channel) {
     self::initConfig();
     return drupal_http_request(self::$baseUrl . "/nodejs/user/channel/remove/$channel/$uid", array('headers' => self::$headers));
   }
