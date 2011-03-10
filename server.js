@@ -21,7 +21,6 @@ try {
   backendSettings.kickUserUrl = '/nodejs/user/kick/:uid';
   backendSettings.addUserToChannel = '/nodejs/user/channel/add/:channel/:uid';
   backendSettings.removeUserFromChannel = '/nodejs/user/channel/remove/:channel/:uid';
-  backendSettings.serviceKeyRequired = false;
 }
 catch (exception) {
   console.log("Failed to read config file, exiting: " + exception);
@@ -33,12 +32,11 @@ catch (exception) {
  */
 var checkServiceKeyCallback = function (request, response, next) {
   if (checkServiceKey(request.header('Nodejs-Service-Key', ''))) {
-    console.log("Valid service key, passing on to next handler.");
+    console.log('Valid service key, passing on to next handler.');
     next();
   }
   else {
-    console.log("Invalid service key, passing on to error handler.");
-    next(new Error("Invalid service key."));
+    response.send({'error': 'Invalid service key.'});
   }
 }
 
@@ -46,11 +44,9 @@ var checkServiceKeyCallback = function (request, response, next) {
  * Check a service key against the configured service key.
  */
 var checkServiceKey = function (serviceKey) {
-  if (backendSettings.serviceKeyRequired) {
-    if (serviceKey != backendSettings.serviceKey) {
-      console.log('Invalide service key "' + serviceKey + '"');
-      return false;
-    }
+  if (backendSettings.serviceKey && serviceKey != backendSettings.serviceKey) {
+    console.log('Invalid service key "' + serviceKey + '", expecting "' + backendSettings.serviceKey + '"');
+    return false;
   }
   return true;
 }
@@ -66,8 +62,8 @@ var publishMessage = function (request, response) {
       var publishMessage = JSON.parse(chunk);
     }
     catch (exception) {
-      console.log("Invalid JSON '" + chunk + "': " + exception);
-      response.send({error: "Invalid JSON, error: " + e.toString()});
+      console.log('Invalid JSON "' + chunk + '": ' + exception);
+      response.send({error: 'Invalid JSON, error: ' + e.toString()});
       return;
     }
     if (publishMessage.broadcast) {
@@ -281,8 +277,8 @@ var setupClientConnection = function(sessionId, authData) {
 }
 
 var server = express.createServer();
-server.post(backendSettings.publishUrl, publishMessage)
-  .all('/nodejs/*', checkServiceKeyCallback)
+server.all('/nodejs/*', checkServiceKeyCallback)
+  .post(backendSettings.publishUrl, publishMessage)
   .get(backendSettings.serverStatsUrl, returnServerStats)
   .get(backendSettings.getActiveChannelsUrl, getActiveChannels)
   .get(backendSettings.kickUserUrl, kickUser)
@@ -327,11 +323,9 @@ socket.on('connection', function(client) {
           console.log('Failed to parse authentication message: ' + exception);
           return;
         }
-        if (backendSettings.serviceKeyRequired) {
-          if (authData.serviceKey != backendSettings.serviceKey) {
-            console.log('Invalide service key "' + authData.serviceKey + '"');
-            return;
-          }
+        if (!checkServiceKey(authData.serviceKey)) {
+          console.log('Invalid service key "' + authData.serviceKey + '"');
+          return;
         }
         if (authData.nodejs_valid_auth_key) {
           console.log("Valid login for uid: " + authData.uid);

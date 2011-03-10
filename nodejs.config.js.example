@@ -2,7 +2,8 @@ backendSettings = {
   'host': 'your.nodejs.server.hostname',
   'port': 8080,
   'resource': '/node.js/realtime',
-  'publishUrl' : '/nodejs/publish',
+  'publishUrl': '/nodejs/publish',
+  'serviceKey': '',
   'backend': {
     'port': 80,
     'host': 'your.drupal.sites.hostname',
