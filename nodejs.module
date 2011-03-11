@@ -106,7 +106,7 @@ function nodejs_menu() {
     'nodejs/stats' => array(
       'title' => 'Node.js server stats',
       'page callback' => 'nodejs_server_stats_page',
-      'access callback' => TRUE,
+      'access arguments' => array('access node.js server stats'),
       'type' => MENU_CALLBACK,
     ),
     'nodejs/user/channel/add' => array(
@@ -115,6 +115,18 @@ function nodejs_menu() {
       'page arguments' => array('nodejs_add_user_to_channel_form'),
       'access callback' => TRUE,
       'type' => MENU_CALLBACK,
+    ),
+  );
+}
+
+/**
+ * Implements hook_permission().
+ */
+function nodejs_permission() {
+  return array(
+    'access node.js server stats' => array(
+      'title' => t('Access node.js server statistics'),
+      'description' => t('Access the statistics page for the node.js server.'),
     ),
   );
 }
@@ -281,10 +293,12 @@ function theme_nodejs_stats_page(array $variables) {
   else {
     $html = '<div class="nodejs-server-stats">';
     $html .= '<h3>Authenticated clients</h3>';
-    if (count($stats->authenticatedClients)) {
+    if (is_array($stats->authenticatedClients) && count($stats->authenticatedClients)) {
       $html .= '<ul>';
       foreach ($stats->authenticatedClients as $client) {
-        $html .= '<li>' . $client->uid . '</li>';
+        if (isset($client->user->uid)) {
+          $html .= '<li>' . $client->user->name . ' (UID: ' . $client->user->uid . ')</li>';
+        }
       }
       $html .= '</ul>';
     }
@@ -292,6 +306,18 @@ function theme_nodejs_stats_page(array $variables) {
       $html .= '<p>There are no authenticated clients</p>';
     }
     $html .= '<h3>Channels</h3>';
+    if (is_array($stats->channels) && count($stats->channels)) {
+      $html .= '<ul>';
+      foreach ($stats->channels as $channel) {
+        if (!empty($channel)) {
+          $html .= '<li>' . $channel . '</li>';
+        }
+      }
+      $html .= '</ul>';
+    }
+    else {
+      $html .= '<p>There are no active channels</p>';
+    }
     $html .= '</div>';
     return $html;
   }

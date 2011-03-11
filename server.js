@@ -148,7 +148,7 @@ var returnServerStats = function(request, response) {
     channels.push(channel);
   }
   for (var sessionId in socket.authenticatedClients) {
-    clients.push({'uid': socket.authenticatedClients[sessionId], 'sessionId': sessionId});
+    clients.push({'user': socket.authenticatedClients[sessionId], 'sessionId': sessionId});
   }
   var stats = {
     'channels': channels,
