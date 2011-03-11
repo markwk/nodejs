@@ -13,10 +13,10 @@ Drupal.Nodejs.runCallbacks = function (message) {
   else {
     $.each(Drupal.Nodejs.callbacks, function () {
       if ($.isFunction(this.callback)) {
-	    try {
+        try {
           this.callback(message);
         }
-		catch (exception) {}
+        catch (exception) {}
       }
     });
   }
@@ -32,7 +32,7 @@ Drupal.behaviors.nodejs = {
       });
       Drupal.Nodejs.socket.send(jsonMessage);
       Drupal.Nodejs.socket.on('message', function(newMessage) {
-        var newMessage = JSON.parse(newMessage);
+        newMessage = JSON.parse(newMessage);
         Drupal.Nodejs.runCallbacks(newMessage);
       });
     }
