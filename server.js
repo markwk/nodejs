@@ -275,7 +275,16 @@ var setupClientConnection = function(sessionId, authData) {
   }
 }
 
-var server = express.createServer();
+var server;
+if (backendSettings.scheme == 'https') {
+  server = express.createServer({
+    key: fs.readFileSync(backendSettings.key),
+    cert: fs.readFileSync(backendSettings.cert)
+  });
+}
+else {
+  server = express.createServer();
+}
 server.all('/nodejs/*', checkServiceKeyCallback)
   .post(backendSettings.publishUrl, publishMessage)
   .get(backendSettings.serverStatsUrl, returnServerStats)

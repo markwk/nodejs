@@ -1,6 +1,9 @@
 backendSettings = {
+  'scheme': 'http',
   'host': 'your.nodejs.server.hostname',
   'port': 8080,
+  'key': '/path/to/key/file',
+  'cert': '/path/to/cert/file',
   'resource': '/node.js/realtime',
   'publishUrl': '/nodejs/publish',
   'serviceKey': '',

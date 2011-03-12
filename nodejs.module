@@ -96,6 +96,15 @@ function nodejs_get_js_handlers() {
  */
 function nodejs_menu() {
   return array(
+    // module settings
+    'admin/config/nodejs' => array(
+      'title' => 'Node.js configuration',
+      'description' => 'Adjust node.js settings.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('nodejs_settings'),
+      'access arguments' => array('administer site configuration'),
+      'file' => 'nodejs.admin.inc',
+    ),
     'nodejs/auth/%' => array(
       'title' => 'Who goes there?',
       'page callback' => 'nodejs_auth_check',
@@ -267,16 +276,32 @@ function nodejs_auth_check($auth_key) {
 
 /**
  * Get nodejs server config.
+ *
+ * @return array
  */
 function nodejs_get_config() {
   $defaults = array(
-    'host' => 'localhost',
-    'port' => 8080,
+    'scheme' => variable_get('nodejs_server_scheme', 'http'),
+    'secure' => variable_get('nodejs_server_scheme', 'http') == 'https' ? 1 : 0,
+    'host' => variable_get('nodejs_server_host', 'localhost'),
+    'port' => variable_get('nodejs_server_port', '8080'),
     'resource' => '/node.js/realtime',
     'authkey' => md5(session_id()),
     'serviceKey' => '',
   );
   return variable_get('nodejs_config', array()) + $defaults;
+}
+
+/**
+ * Get the URL of a Node.js callback.
+ *
+ * @param array $config the result of nodejs_get_config()
+ * @param string $callback the path to call on Node.js server (without leading /)
+ * @return string
+ */
+function nodejs_get_url($config, $callback = '') {
+  $url = $config['scheme'] .'://'. $config['host'] .':'. $config['port'] .'/'. $callback;
+  return $url;
 }
 
 /**
@@ -330,7 +355,7 @@ function theme_nodejs_stats_page(array $variables) {
  */
 function nodejs_get_server_stats() {
   $config = nodejs_get_config();
-  $url = 'http://' . $config['host'] . ':' . $config['port'] . '/nodejs/stats/server';
+  $url = nodejs_get_url($config, 'nodejs/stats/server');
   $result = drupal_http_request($url);
   if (isset($result->error)) {
     return (object) array();
@@ -389,7 +414,6 @@ function nodejs_add_user_to_channel($uid, $channel) {
 }
 
 class Nodejs {
-
   public static $messages = array();
 
   public static $config = NULL;
@@ -402,7 +426,7 @@ class Nodejs {
     if (!isset(self::$config)) {
       self::$config = nodejs_get_config();
       self::$headers = array('Nodejs-Service-Key' => self::$config['serviceKey']);
-      self::$baseUrl = 'http://' . self::$config['host'] . ':' . self::$config['port'];
+      self::$baseUrl = nodejs_get_url(self::$config);
     }
   }
 
@@ -428,27 +452,27 @@ class Nodejs {
       'data' => drupal_json_encode($message),
       'headers' => self::$headers,
     );
-    return drupal_http_request(self::$baseUrl . '/nodejs/publish', $options);
+    return drupal_http_request(self::$baseUrl . 'nodejs/publish', $options);
   }
   
   public static function kickUser($uid) {
     self::initConfig();
-    return drupal_http_request(self::$baseUrl . "/nodejs/user/kick/$uid", array('headers' => self::$headers));
+    return drupal_http_request(self::$baseUrl . "nodejs/user/kick/$uid", array('headers' => self::$headers));
   }
 
   public static function addUserToChannel($uid, $channel) {
     self::initConfig();
-    return drupal_http_request(self::$baseUrl . "/nodejs/user/channel/add/$channel/$uid", array('headers' => self::$headers));
+    return drupal_http_request(self::$baseUrl . "nodejs/user/channel/add/$channel/$uid", array('headers' => self::$headers));
   }
 
   public static function removeUserFromChannel($uid, $channel) {
     self::initConfig();
-    return drupal_http_request(self::$baseUrl . "/nodejs/user/channel/remove/$channel/$uid", array('headers' => self::$headers));
+    return drupal_http_request(self::$baseUrl . "nodejs/user/channel/remove/$channel/$uid", array('headers' => self::$headers));
   }
 
   public static function getChannels() {
     self::initConfig();
-    $url = 'http://' . $config['host'] . ':' . $config['port'] . "/nodejs/stats/channels";
+    return drupal_http_request(self::$baseUrl . 'nodejs/stats/channels', array('headers' => self::$headers));
   }
 }
 

@@ -25,7 +25,10 @@ Drupal.Nodejs.runCallbacks = function (message) {
 Drupal.behaviors.nodejs = {
   attach: function (context, settings) {
     if (!Drupal.Nodejs.socket) {
-      Drupal.Nodejs.socket = new io.Socket(Drupal.settings.nodejs.host, {port: Drupal.settings.nodejs.port, resource: Drupal.settings.nodejs.resource});
+      Drupal.Nodejs.socket = new io.Socket(
+        Drupal.settings.nodejs.host,
+        {secure: Drupal.settings.nodejs.secure, port: Drupal.settings.nodejs.port, resource: Drupal.settings.nodejs.resource}
+      );
       Drupal.Nodejs.socket.connect();
       var jsonMessage = JSON.stringify({
         authkey: Drupal.settings.nodejs.authkey

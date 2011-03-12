@@ -4,3 +4,4 @@ package = Nodejs
 version = VERSION
 core = 7.x
 files[] = nodejs.module
+configure = admin/config/nodejs

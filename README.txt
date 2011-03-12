@@ -8,13 +8,20 @@ It is currently pre-alpha, use at your own risk. It will eat your lunch and kill
 Setup
 =====
 
-1. Install Node.js + Express.
-2. Install Socket.Io to 'path/to/nodejs/socket_io'.
-3. Copy 'nodejs/nodejs.config.js.example' to 'nodejs/nodejs.config.js', and edit values to taste.
-4. Run the following command
+Node.js server:
+  1. Install Node.js.
+  2. Install Express module.
+  3. Install Socket.Io module.
+  4. Copy 'server.js' to a directory dedicated to the Node.js server used by Drupal.
+  5. Copy 'nodejs.config.js.example' to 'nodejs.config.js' in the same directory, and edit values to taste.
+  6. Run the following command
 <code>
 sudo node server.js
 </code>
-5. ...
-6. Profit!
 
+Drupal server:
+  1. Install Socket.Io to 'path/to/nodejs/socket_io' (nodejs module directory).
+  2. Activate at least nodejs module.
+  3. Configure it. 
+  4. ...
+  5. Profit!
