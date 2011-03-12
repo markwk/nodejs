@@ -10,7 +10,7 @@ var http = require('http'),
     url = require('url'),
     fs = require('fs'),
     express = require('express'),
-    io = require(__dirname + '/socket_io/lib/socket.io'),
+    io = require('socket.io'),
     sys = require(process.binding('natives').util ? 'util' : 'sys'),
     vm = require('vm');
 
