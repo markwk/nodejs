@@ -28,7 +28,7 @@ function nodejs_drush_command() {
   );
   $items['user-message'] = array(
     'callback' => 'nodejs_send_user_message',
-    'description' => 'Send a message to given user.',
+    'description' => 'Send a message to a given user.',
     'arguments' => array(
       'uid' => 'The user id of the message recipient.',
       'subject' => 'The subject of the message.',
