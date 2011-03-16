@@ -13,7 +13,7 @@ function nodejs_actions_action_info() {
     $actions['nodejs_actions_' . $type . '_action'] = array(
       'type' => $type,
       'triggers' => array_keys($triggers[$type]),
-      'label' => t("Publish realtime notifications of $type activity."),
+      'label' => t('Publish realtime notifications of @type activity.', array('@type' => $type)),
       'configurable' => FALSE,
     );
   }
