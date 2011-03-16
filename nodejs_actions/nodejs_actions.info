@@ -1,0 +1,7 @@
+name = Nodejs Actions
+description = Provides actions that dispatch realtime user notifications via node.js.
+package = Nodejs
+version = VERSION
+core = 7.x
+dependencies[] = nodejs
+dependencies[] = trigger

@@ -1,9 +1,6 @@
-name = Nodejs notification module
-description = Adds realtime notification support to Drupal
+name = Nodejs Notifications
+description = Adds a client to pages for displaying realtime notification from node.js.
 package = Nodejs
 version = VERSION
 core = 7.x
-files[] = nodejs.module
 dependencies[] = nodejs
-dependencies[] = trigger
-
