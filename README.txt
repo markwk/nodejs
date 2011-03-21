@@ -3,7 +3,7 @@ Node.js integration
 
 This module adds Node.js integration to Drupal.
 
-It is currently pre-alpha, use at your own risk. It will eat your lunch and kill your kittens.
+It is currently alpha software, use at your own risk. It may eat your lunch and kill your kittens.
 
 Setup
 =====
@@ -25,3 +25,4 @@ Drupal server:
   3. Configure nodejs at Administration > Configuration > Node.js
   4. ...
   5. Profit!
+
