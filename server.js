@@ -115,7 +115,7 @@ var toggleDebug = function (request, response) {
       console.log('Invalid JSON "' + chunk + '": ' + exception);
       response.send({error: 'Invalid JSON, error: ' + e.toString()});
     }
-  }
+  });
 }
 
 /**
