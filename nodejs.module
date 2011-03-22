@@ -294,6 +294,7 @@ function nodejs_get_config() {
     'resource' => '/node.js/realtime',
     'authkey' => md5(session_id()),
     'serviceKey' => '',
+    'websocketSwfLocation' => base_path() . drupal_get_path('module', 'nodejs') . '/socket_io/socket.io-client/lib/vendor/web-socket-js/WebSocketMain.swf',
   );
   return variable_get('nodejs_config', array()) + $defaults;
 }

@@ -38,6 +38,7 @@ Drupal.behaviors.nodejs = {
         newMessage = JSON.parse(newMessage);
         Drupal.Nodejs.runCallbacks(newMessage);
       });
+      WEB_SOCKET_SWF_LOCATION = Drupal.settings.nodejs.websocketSwfLocation;
     }
   }
 };
