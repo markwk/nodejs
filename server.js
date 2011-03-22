@@ -157,7 +157,6 @@ var publishMessageToChannel = function (message, jsonString) {
   var clientCount = 0;
   if (socket.channels[message.channel]) {
     for (var sessionId in socket.channels[message.channel].sessionIds) {
-      console.log(message.channel + ':' + sessionId);
       if (socket.clients[sessionId]) {
         socket.clients[sessionId].send(jsonString);
         clientCount++;
@@ -197,6 +196,10 @@ var kickUser = function(request, response) {
         delete socket.clients[clientId];
         if (backendSettings.debug) {
           console.log('kickUser: deleted socket "' + clientId + '" for uid "' + request.params.uid + '"');
+        }
+        // Delete any channel entries for this clientId.
+        for (var channel in socket.channels) {
+          delete socket.channels[channel].sessionIds[clientId];
         }
       }
     }
