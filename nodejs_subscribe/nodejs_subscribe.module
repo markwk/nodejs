@@ -89,17 +89,13 @@ function nodejs_subscribe_get_user_channels($uid) {
  * Implements hook_form_BASE_FORM_ID_alter().
  */
 function nodejs_subscribe_form_node_form_alter(&$form, $form_state) {
-  // Get subscription settings for this node
-  $subscribe_author_default = FALSE;
-  $subscribe_user_default = FALSE;
+  $subscriptions_allowed = FALSE;
   if (!empty($form['#node']->nid)) {
-    $subscribe_author_default = nodejs_subscribe_is_user_subscribed_to_node($form['#node']->uid, $form['#node']->nid) ? '1' : '0';
     if (isset($form['#node']->nodejs_subscribe)) {
-      $subscribe_user_default = $form['#node']->nodejs_subscribe;
+      $subscriptions_allowed = $form['#node']->nodejs_subscribe ? '1' : '0';
     }
   }
 
-  // Add subscription settings form items
   $form['nodejs_subscribe'] = array(
     '#type' => 'fieldset',
     '#title' => t('Realtime notifications'),
@@ -113,17 +109,11 @@ function nodejs_subscribe_form_node_form_alter(&$form, $form_state) {
     '#weight' => 30,
     '#tree' => TRUE,
   );
-  $form['nodejs_subscribe']['nodejs_subscribe_node_author'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Notify the content author'),
-    '#description' => t('Subscribe to realtime notifications on this content'),
-    '#default_value' => $subscribe_author_default,
-  );
-  $form['nodejs_subscribe']['nodejs_subscribe_node_user'] = array(
+  $form['nodejs_subscribe']['nodejs_subscriptions_allowed'] = array(
     '#type' => 'checkbox',
     '#title' => t('Allow users to subscribe'),
     '#description' => t('Allow users to subscribe for realtime notifications'),
-    '#default_value' => $subscribe_user_default,
+    '#default_value' => $subscriptions_allowed,
   );
 }
 
@@ -134,19 +124,21 @@ function nodejs_subscribe_unsubscribe_node($node) {
   global $user;
 
   nodejs_subscribe_delete($node, $user->uid);
-  drupal_set_message(t("You have been unsubscribed from '%node_title'.", array(':node_title' => $node->title)));
+  drupal_set_message(t("You have been unsubscribed from '%node_title'.", array('%node_title' => $node->title)));
+  drupal_goto('node/' . $node->nid);
 }
 
 /**
  * Page callback for subscribing/unsubscribing to a node.
  */
-function nodejs_subscribe_subscribe_node($nid, $op) {
+function nodejs_subscribe_subscribe_node($node) {
   global $user;
 
-  if (!nodejs_subscribe_is_user_subscribed_to_node($user->uid, $nid)) {
+  if (!nodejs_subscribe_is_user_subscribed_to_node($user->uid, $node->nid)) {
     nodejs_subscribe_insert($node, $user->uid);
-    drupal_set_message(t("You have subscribed to '%node_title'.", array(':node_title' => $node->title)));
+    drupal_set_message(t("You have subscribed to '%node_title'.", array('%node_title' => $node->title)));
   }
+  drupal_goto('node/' . $node->nid);
 }
 
 /**
@@ -164,11 +156,8 @@ function nodejs_subscribe_node_load($nodes, $types) {
  */
 function nodejs_subscribe_node_insert($node) {
   if (isset($node->nodejs_subscribe)) {
-    if ($node->nodejs_subscribe['nodejs_subscribe_node_author']) {
-      nodejs_subscribe_insert($node, $node->uid);
-    }
-    if ($node->nodejs_subscribe['nodejs_subscribe_node_user']) {
-      db_query('INSERT INTO {nodejs_subscribe_node} (nid, subscribe) VALUES (:nid, :subscribe)', array(':nid' => $node->nid, ':subscribe' => $node->nodejs_subscribe));
+    if ($node->nodejs_subscribe['nodejs_subscriptions_allowed']) {
+      db_query('INSERT INTO {nodejs_subscribe_node} (nid, subscribe) VALUES (:nid, :subscribe)', array(':nid' => $node->nid, ':subscribe' => 1));
     }
   }
 }
@@ -179,21 +168,18 @@ function nodejs_subscribe_node_insert($node) {
  * TODO: When disabling subscriptions for users on a node, delete all active subscriptions
  */
 function nodejs_subscribe_node_update($node) {
-  if (isset($node->nodejs_subscribe)) {
-    if (!$node->nodejs_subscribe['nodejs_subscribe_node_author']) {
-      nodejs_subscribe_delete($node, $node->uid);
-    }
-    elseif (!nodejs_subscribe_is_user_subscribed_to_node($node->uid, $node->nid)) {
-      nodejs_subscribe_insert($node, $node->uid);
-    }
+  global $user;
 
-    if ($node->nodejs_subscribe['nodejs_subscribe_node_user']) {
-      $node_old = node_load($node->nid);
-      if (isset($node_old->nodejs_subscribe)) {
-        db_query('UPDATE {nodejs_subscribe_node} SET subscribe = :subscribe WHERE nid = :nid', array(':nid' => $node->nid, ':subscribe' => $node->nodejs_subscribe['nodejs_subscribe_node_user']));
+  if (isset($node->nodejs_subscribe)) {
+    if ($node->nodejs_subscribe['nodejs_subscriptions_allowed']) {
+      $transaction = db_transaction();
+      try {
+        db_query('DELETE FROM {nodejs_subscribe_node} WHERE nid = :nid', array(':nid' => $node->nid));
+        db_query('INSERT INTO {nodejs_subscribe_node} (nid, subscribe) VALUES (:nid, :subscribe)', array(':nid' => $node->nid, ':subscribe' => $node->nodejs_subscribe['nodejs_subscriptions_allowed']));
       }
-      else {
-        db_query('INSERT INTO {nodejs_subscribe_node} (nid, subscribe) VALUES (:nid, :subscribe)', array(':nid' => $node->nid, ':subscribe' => $node->nodejs_subscribe['nodejs_subscribe_node_user']));
+      catch (Exception $e) {
+        $transaction->rollback();
+        watchdog('nodejs_subscribe', t('Error processing node subscription for nid %nid', array(':nid' => $node->nid)));
       }
     }
     else {
@@ -227,20 +213,20 @@ function nodejs_subscribe_node_view($node, $view_mode) {
 
   // If node allows nodejs subscriptions and user has permission to subscribe,
   // then provide "Subscribe" or "Unsubscribe" links.
-  if (isset($node->nodejs_subscribe) && $node->nodejs_subscribe && user_access('nodejs subscribe to content') && in_array($view_mode, array('full', 'teaser'))) {
+  if (isset($node->nodejs_subscribe) && $node->nodejs_subscribe && user_access('nodejs subscribe to node') && in_array($view_mode, array('full', 'teaser'))) {
     $links = array();
     $node_title_stripped = strip_tags($node->title);
     if (nodejs_subscribe_is_user_subscribed_to_node($user->uid, $node->nid)) {
       $links['nodejs-subscribe-unsubscribe-node'] = array(
         'title' => t('Unsubscribe'),
-        'href' => "nodejs/subscribe/nojs/$node->nid/unsubscribe",
+        'href' => "nodejs/unsubscribe/$node->nid",
         'attributes' => array('class' => array('nodejs-subscribe-node-link'), 'title' => t('Unsubscribe to @title', array('@title' => $node_title_stripped))),
       );
     }
     else {
       $links['nodejs-subscribe-subscribe-node'] = array(
         'title' => t('Subscribe'),
-        'href' => "nodejs/subscribe/nojs/$node->nid/subscribe",
+        'href' => "nodejs/subscribe/$node->nid",
         'attributes' => array('class' => array('nodejs-subscribe-node-link'), 'title' => t('Subscribe to @title', array('@title' => $node_title_stripped))),
       );
     }
