@@ -5,10 +5,17 @@
  */
 function nodejs_subscribe_menu() {
   return array(
-    'nodejs/subscribe/%/%/%' => array(
-      'title' => 'Subscribe/unsubscribe to node',
+    'nodejs/subscribe/%node' => array(
+      'title' => 'Subscribe to a node',
       'page callback' => 'nodejs_subscribe_subscribe_node',
-      'page arguments' => array(2, 3, 4),
+      'page arguments' => array(2),
+      'access arguments' => array('nodejs subscribe to node'),
+      'type' => MENU_CALLBACK,
+    ),
+    'nodejs/unsubscribe/%node' => array(
+      'title' => 'Subscribe to a node',
+      'page callback' => 'nodejs_subscribe_unsubscribe_node',
+      'page arguments' => array(2),
       'access arguments' => array('nodejs subscribe to node'),
       'type' => MENU_CALLBACK,
     ),
@@ -121,38 +128,32 @@ function nodejs_subscribe_form_node_form_alter(&$form, $form_state) {
 }
 
 /**
- * Page callback for subscribing/unsubscribing to a node.
+ * Page callback for unsubscribing to a node.
  */
-function nodejs_subscribe_subscribe_node($method, $nid, $op) {
+function nodejs_subscribe_unsubscribe_node($node) {
   global $user;
 
-  // Check inputs
-  $nid = intval($nid);
-  $node = $nid ? node_load($nid) : FALSE;
-  if (!$node) {
-    drupal_not_found();
-  }
+  nodejs_subscribe_delete($node, $user->uid);
+  drupal_set_message(t("You have been unsubscribed from '%node_title'.", array(':node_title' => $node->title)));
+}
 
-  // Handle subscribe or unsubscribe operations
-  if ($op === 'subscribe' && !nodejs_subscribe_is_user_subscribed_to_node($user->uid, $nid)) {
+/**
+ * Page callback for subscribing/unsubscribing to a node.
+ */
+function nodejs_subscribe_subscribe_node($nid, $op) {
+  global $user;
+
+  if (!nodejs_subscribe_is_user_subscribed_to_node($user->uid, $nid)) {
     nodejs_subscribe_insert($node, $user->uid);
+    drupal_set_message(t("You have subscribed to '%node_title'.", array(':node_title' => $node->title)));
   }
-  elseif ($op === 'unsubscribe' && nodejs_subscribe_is_user_subscribed_to_node($user->uid, $nid)) {
-    nodejs_subscribe_delete($node, $user->uid);
-  }
-
-  // Return AJAX response or redirect to node
-  if ($method === 'ajax') {
-//TODO: ajax method
-  }
-  drupal_goto('node/' . $nid);
 }
 
 /**
  * Implements hook_node_load().
  */
 function nodejs_subscribe_node_load($nodes, $types) {
-  $result = db_query('SELECT nid, subscribe FROM {nodejs_subscribe_node} WHERE nid IN(:nids)', array(':nids' => array_keys($nodes)));
+  $result = db_query('SELECT nid, subscribe FROM {nodejs_subscribe_node} WHERE nid IN (:nids)', array(':nids' => array_keys($nodes)));
   foreach ($result as $record) {
     $nodes[$record->nid]->nodejs_subscribe = $record->subscribe;
   }
@@ -167,13 +168,15 @@ function nodejs_subscribe_node_insert($node) {
       nodejs_subscribe_insert($node, $node->uid);
     }
     if ($node->nodejs_subscribe['nodejs_subscribe_node_user']) {
-      db_query('INSERT {nodejs_subscribe_node} (nid, subscribe) VALUES (:nid, :subscribe)', array(':nid' => $node->nid, ':subscribe' => $node->nodejs_subscribe));
+      db_query('INSERT INTO {nodejs_subscribe_node} (nid, subscribe) VALUES (:nid, :subscribe)', array(':nid' => $node->nid, ':subscribe' => $node->nodejs_subscribe));
     }
   }
 }
 
 /**
  * Implements hook_node_update().
+ *
+ * TODO: When disabling subscriptions for users on a node, delete all active subscriptions
  */
 function nodejs_subscribe_node_update($node) {
   if (isset($node->nodejs_subscribe)) {
@@ -190,12 +193,11 @@ function nodejs_subscribe_node_update($node) {
         db_query('UPDATE {nodejs_subscribe_node} SET subscribe = :subscribe WHERE nid = :nid', array(':nid' => $node->nid, ':subscribe' => $node->nodejs_subscribe['nodejs_subscribe_node_user']));
       }
       else {
-        db_query('INSERT {nodejs_subscribe_node} (nid, subscribe) VALUES (:nid, :subscribe)', array(':nid' => $node->nid, ':subscribe' => $node->nodejs_subscribe['nodejs_subscribe_node_user']));
+        db_query('INSERT INTO {nodejs_subscribe_node} (nid, subscribe) VALUES (:nid, :subscribe)', array(':nid' => $node->nid, ':subscribe' => $node->nodejs_subscribe['nodejs_subscribe_node_user']));
       }
     }
     else {
-      db_query('DELETE {nodejs_subscribe_node} WHERE nid = :nid', array(':nid' => $node->nid));
-//TODO: When disabling subscriptions for users on a node, delete all active subscriptions
+      db_query('DELETE FROM {nodejs_subscribe_node} WHERE nid = :nid', array(':nid' => $node->nid));
     }
   }
 
@@ -206,13 +208,14 @@ function nodejs_subscribe_node_update($node) {
 
 /**
  * Implements hook_node_delete().
+ *
+ * TODO: When a node is deleted, delete subscriptions of all users on this node.
  */
 function nodejs_subscribe_node_delete($node) {
   db_query('DELETE FROM {nodejs_subscribe_node} WHERE nid = :nid', array(':nid' => $node->nid));
 
   if (nodejs_subscribe_is_node_subscribed_to($node->nid)) {
     nodejs_subscribe_send_notification($node, 'deleted');
-//TODO: When a node is deleted, delete subscriptions of all users on this node
   }
 }
 
