@@ -319,32 +319,38 @@ function nodejs_get_url($config, $callback = '') {
 function theme_nodejs_stats_page(array $variables) {
   $stats = $variables['stats'];
   if (empty($stats)) {
-    return "Error reading Node.js server stats.";
+    return t('Error reading Node.js server stats.');
   }
   else {
     $html = '<div class="nodejs-server-stats">';
-    $html .= '<h3>Authenticated clients</h3>';
     if (is_array($stats->authenticatedClients) && count($stats->authenticatedClients)) {
-      $html .= '<ul>';
+      $items = array();
       foreach ($stats->authenticatedClients as $client) {
         if (isset($client->user->uid)) {
-          $html .= '<li>' . $client->user->name . ' (UID: ' . $client->user->uid . ')</li>';
+          $items[] = t('!username UID: %uid', array('!username' => l($client->user->name, $client->user->uid), '%uid' => $client->user->uid));
         }
       }
-      $html .= '</ul>';
+      $variables = array(
+        'title' => t('Authenticated clients'),
+        'items' => $items,
+      );
+      $html .= theme('item_list', $variables);
     }
     else {
       $html .= '<p>There are no authenticated clients</p>';
     }
-    $html .= '<h3>Channels</h3>';
     if (is_array($stats->channels) && count($stats->channels)) {
-      $html .= '<ul>';
+      $items = array();
       foreach ($stats->channels as $channel) {
         if (!empty($channel)) {
-          $html .= '<li>' . $channel . '</li>';
+          $items[] = $channel;
         }
       }
-      $html .= '</ul>';
+      $variables = array(
+        'title' => t('Channels'),
+        'items' => $items,
+      );
+      $html .= theme('item_list', $variables);
     }
     else {
       $html .= '<p>There are no active channels</p>';
