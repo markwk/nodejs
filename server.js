@@ -7,6 +7,7 @@
  */
 
 var http = require('http'),
+    https = require('https'),
     url = require('url'),
     fs = require('fs'),
     express = require('express'),
@@ -25,6 +26,52 @@ try {
 catch (exception) {
   console.log("Failed to read config file, exiting: " + exception);
   process.exit(1);
+}
+
+/**
+ * Authenticate a client connection based on the message it sent.
+ */
+function authenticateClient(client, message) {
+  var options = {
+    port: backendSettings.backend.port,
+    host: backendSettings.backend.host,
+    path: backendSettings.backend.authPath + message.authkey
+  };
+  var response;
+  if (backendSettings.backend.scheme == 'https') {
+    response = https.get(options, authenticateClientCallback);
+  }
+  else {
+    response = http.get(options, authenticateClientCallback);
+  }
+  function authenticateClientCallback(response) {
+    response.on('data', function (chunk) {
+      response.setEncoding('utf8');
+      var authData = false;
+      try {
+        authData = JSON.parse(chunk);
+      }
+      catch (exception) {
+        console.log('Failed to parse authentication message: ' + exception);
+        return;
+      }
+      if (!checkServiceKey(authData.serviceKey)) {
+        console.log('Invalid service key "' + authData.serviceKey + '"');
+        return;
+      }
+      if (authData.nodejs_valid_auth_key) {
+        console.log("Valid login for uid: " + authData.uid);
+        socket.authenticatedClients[message.authkey] = authData;
+        setupClientConnection(client.sessionId, authData);
+      }
+      else {
+        console.log("Invalid login for uid " + authData.uid);
+        delete socket.authenticatedClients[message.authkey];
+      }
+    }).on('error', function(exception) {
+      console.log("Error hitting backend with authentication token: " + exception);
+    });
+  }
 }
 
 /**
@@ -58,41 +105,41 @@ var publishMessage = function (request, response) {
   request.setEncoding('utf8');
   request.on('data', function (chunk) {
     try {
-      var publishMessage = JSON.parse(chunk);
+      var message = JSON.parse(chunk);
     }
     catch (exception) {
       console.log('Invalid JSON "' + chunk + '": ' + exception);
       response.send({error: 'Invalid JSON, error: ' + e.toString()});
       return;
     }
-    if (publishMessage.broadcast) {
-      console.log('Broadcasting to ' + publishMessage.channel);
+    if (message.broadcast) {
+      console.log('Broadcasting to ' + message.channel);
       socket.broadcast(chunk);
       sentCount = socket.clients.length;
     }
     else {
-      sentCount = publishMessageToChannel(publishMessage, chunk);
+      sentCount = publishMessageToChannel(message, chunk);
     }
+    response.send({sent: sentCount});
   });
-  response.send({sent: sentCount});
 }
 
 /**
  * Publish a message to clients subscribed to a channel.
  */
-var publishMessageToChannel = function (jsonObject, jsonString) {
+var publishMessageToChannel = function (message, jsonString) {
   var clientCount = 0;
-  if (socket.channels[jsonObject.channel]) {
-    for (var sessionId in socket.channels[jsonObject.channel]) {
+  if (socket.channels[message.channel]) {
+    for (var sessionId in socket.channels[message.channel]) {
       if (socket.clients[sessionId]) {
         socket.clients[sessionId].send(jsonString);
         clientCount++;
       }
     }
-    console.log('Sent message to ' + clientCount + ' clients in channel "' + jsonObject.channel + '"');
+    console.log('Sent message to ' + clientCount + ' clients in channel "' + message.channel + '"');
   }
   else {
-    console.log('No channel "' + jsonObject.channel + '" to send to');
+    console.log('No channel "' + message.channel + '" to send to');
   }
   return clientCount;
 }
@@ -277,6 +324,7 @@ var setupClientConnection = function(sessionId, authData) {
 
 var server;
 if (backendSettings.scheme == 'https') {
+  console.log('Starting https server.');
   server = express.createServer({
     key: fs.readFileSync(backendSettings.key),
     cert: fs.readFileSync(backendSettings.cert)
@@ -313,41 +361,10 @@ socket.on('connection', function(client) {
     if (socket.authenticatedClients[message.authkey]) {
       console.log('Reusing existing authentication data for key "' + message.authkey + '"');
       setupClientConnection(client.sessionId, socket.authenticatedClients[message.authkey]);
-      return;
     }
-    var options = {
-      port: backendSettings.backend.port,
-      host: backendSettings.backend.host,
-      path: backendSettings.backend.authPath + message.authkey
-    };
-    http.get(options, function (response) {
-      response.on('data', function (chunk) {
-        response.setEncoding('utf8');
-        var authData = false;
-        try {
-          authData = JSON.parse(chunk);
-        }
-        catch (exception) {
-          console.log('Failed to parse authentication message: ' + exception);
-          return;
-        }
-        if (!checkServiceKey(authData.serviceKey)) {
-          console.log('Invalid service key "' + authData.serviceKey + '"');
-          return;
-        }
-        if (authData.nodejs_valid_auth_key) {
-          console.log("Valid login for uid: " + authData.uid);
-          socket.authenticatedClients[message.authkey] = authData;
-          setupClientConnection(client.sessionId, authData);
-        }
-        else {
-          console.log("Invalid login for uid " + authData.uid);
-          delete socket.authenticatedClients[message.authkey];
-        }
-      });
-    }).on('error', function(exception) {
-      console.log(exception);
-    });
+    else {
+      authenticateClient(client, message);
+    }
   });
 }).on('error', function(exception) {
   console.log(exception);
