@@ -20,8 +20,9 @@ try {
   backendSettings.serverStatsUrl = '/nodejs/stats/server';
   backendSettings.getActiveChannelsUrl = '/nodejs/stats/channels';
   backendSettings.kickUserUrl = '/nodejs/user/kick/:uid';
-  backendSettings.addUserToChannel = '/nodejs/user/channel/add/:channel/:uid';
-  backendSettings.removeUserFromChannel = '/nodejs/user/channel/remove/:channel/:uid';
+  backendSettings.addUserToChannelUrl = '/nodejs/user/channel/add/:channel/:uid';
+  backendSettings.removeUserFromChannelUrl = '/nodejs/user/channel/remove/:channel/:uid';
+  backendSettings.toggleDebugUrl = '/nodejs/debug/toggle';
 }
 catch (exception) {
   console.log("Failed to read config file, exiting: " + exception);
@@ -60,12 +61,14 @@ function authenticateClient(client, message) {
         return;
       }
       if (authData.nodejs_valid_auth_key) {
-        console.log("Valid login for uid: " + authData.uid);
+        if (backendSettings.debug) {
+          console.log("Valid login for uid: " + authData.uid);
+        }
         socket.authenticatedClients[message.authkey] = authData;
         setupClientConnection(client.sessionId, authData);
       }
       else {
-        console.log("Invalid login for uid " + authData.uid);
+        console.log('Invalid login for uid "' + authData.uid + '"');
         delete socket.authenticatedClients[message.authkey];
       }
     }).on('error', function(exception) {
@@ -98,6 +101,24 @@ var checkServiceKey = function (serviceKey) {
 }
 
 /**
+ * Http callback - set the debug flag.
+ */
+var toggleDebug = function (request, response) {
+  request.setEncoding('utf8');
+  request.on('data', function (chunk) {
+    try {
+      var toggle = JSON.parse(chunk);
+      backendSettings.debug = toggle.debug;
+      response.send({debug: toggle.debug});
+    }
+    catch (exception) {
+      console.log('Invalid JSON "' + chunk + '": ' + exception);
+      response.send({error: 'Invalid JSON, error: ' + e.toString()});
+    }
+  }
+}
+
+/**
  * Http callback - read in a JSON message and publish it to interested clients.
  */
 var publishMessage = function (request, response) {
@@ -106,6 +127,9 @@ var publishMessage = function (request, response) {
   request.on('data', function (chunk) {
     try {
       var message = JSON.parse(chunk);
+      if (backendSettings.debug) {
+        console.log('publishMessage: message --> ' + message);
+      }
     }
     catch (exception) {
       console.log('Invalid JSON "' + chunk + '": ' + exception);
@@ -113,7 +137,9 @@ var publishMessage = function (request, response) {
       return;
     }
     if (message.broadcast) {
-      console.log('Broadcasting to ' + message.channel);
+      if (backendSettings.debug) {
+        console.log('Broadcasting to ' + message.channel);
+      }
       socket.broadcast(chunk);
       sentCount = socket.clients.length;
     }
@@ -130,13 +156,16 @@ var publishMessage = function (request, response) {
 var publishMessageToChannel = function (message, jsonString) {
   var clientCount = 0;
   if (socket.channels[message.channel]) {
-    for (var sessionId in socket.channels[message.channel]) {
+    for (var sessionId in socket.channels[message.channel].sessionIds) {
+      console.log(message.channel + ':' + sessionId);
       if (socket.clients[sessionId]) {
         socket.clients[sessionId].send(jsonString);
         clientCount++;
       }
     }
-    console.log('Sent message to ' + clientCount + ' clients in channel "' + message.channel + '"');
+    if (backendSettings.debug) {
+      console.log('Sent message to ' + clientCount + ' clients in channel "' + message.channel + '"');
+    }
   }
   else {
     console.log('No channel "' + message.channel + '" to send to');
@@ -166,6 +195,9 @@ var kickUser = function(request, response) {
     for (var clientId in socket.clients) {
       if (socket.clients[clientId].uid == request.params.uid) {
         delete socket.clients[clientId];
+        if (backendSettings.debug) {
+          console.log('kickUser: deleted socket "' + clientId + '" for uid "' + request.params.uid + '"');
+        }
       }
     }
     response.send({'status': 'success'});
@@ -182,6 +214,9 @@ var getActiveChannels = function(request, response) {
   var channels = {};
   for (var channel in socket.channels) {
     channels[channel] = channel;
+  }
+  if (backendSettings.debug) {
+    console.log('getActiveChannels: returning channels --> ' . channels.toString());
   }
   response.send(channels);
 };
@@ -202,6 +237,9 @@ var returnServerStats = function(request, response) {
     'totalClientCount': socket.clients.length,
     'authenticatedClients': clients
   };
+  if (backendSettings.debug) {
+    console.log('returnServerStats: returning server stats --> ' . stats.toString());
+  }
   response.send(stats);
 };
 
@@ -235,13 +273,15 @@ var addUserToChannel = function(request, response) {
       response.send({'status': 'failed', 'error': 'Invalid channel name.'});
       return;
     }
-    socket.channels[channel] = socket.channels[channel] || {};
+    socket.channels[channel] = socket.channels[channel] || {'sessionIds': {}};
     var sessionIds = getNodejsSessionIdsFromUid(uid);
     if (sessionIds.length > 0) {
       for (var i in sessionIds) {
-        socket.channels[channel][sessionIds[i]] = sessionIds[i];
+        socket.channels[channel].sessionIds[sessionIds[i]] = sessionIds[i];
       }
-      console.log("Added channel '" + channel + "' to sessionIds " + sessionIds.join());
+      if (backendSettings.debug) {
+        console.log("Added channel '" + channel + "' to sessionIds " + sessionIds.join());
+      }
       response.send({'status': 'success'});
     }
     else {
@@ -282,8 +322,8 @@ var removeUserFromChannel = function(request, response) {
     if (socket.channels[channel]) {
       var sessionIds = getNodejsSessionIdsFromUid(uid);
       for (var i in sessionIds) {
-        if (socket.channels[channel][sessionIds[i]]) {
-          delete socket.channels[channel][sessionIds[i]];
+        if (socket.channels[channel].sessionIds[sessionIds[i]]) {
+          delete socket.channels[channel].sessionIds[sessionIds[i]];
         }
       }
       for (var authKey in socket.authenticatedClients) {
@@ -294,7 +334,9 @@ var removeUserFromChannel = function(request, response) {
           }
         }
       }
-      console.log("Successfully removed uid '" + uid + "' from channel '" + channel + "'");
+      if (backendSettings.debug) {
+        console.log("Successfully removed uid '" + uid + "' from channel '" + channel + "'");
+      }
       response.send({'status': 'success'});
     }
     else {
@@ -315,22 +357,29 @@ var removeUserFromChannel = function(request, response) {
 var setupClientConnection = function(sessionId, authData) {
   socket.clients[sessionId].authKey = authData.authKey;
   socket.clients[sessionId].uid = authData.uid;
-  console.log("adding channels for uid " + authData.uid + ': ' + authData.channels.toString());
+  if (backendSettings.debug) {
+    console.log("adding channels for uid " + authData.uid + ': ' + authData.channels.toString());
+  }
   for (var i in authData.channels) {
-    socket.channels[authData.channels[i]] = socket.channels[authData.channels[i]] || {};
-    socket.channels[authData.channels[i]][sessionId] = sessionId;
+    socket.channels[authData.channels[i]] = socket.channels[authData.channels[i]] || {'sessionIds': {}};
+    socket.channels[authData.channels[i]].sessionIds[sessionId] = sessionId;
   }
 }
 
 var server;
 if (backendSettings.scheme == 'https') {
-  console.log('Starting https server.');
+  if (backendSettings.debug) {
+    console.log('Starting https server.');
+  }
   server = express.createServer({
     key: fs.readFileSync(backendSettings.key),
     cert: fs.readFileSync(backendSettings.cert)
   });
 }
 else {
+  if (backendSettings.debug) {
+    console.log('Starting http server.');
+  }
   server = express.createServer();
 }
 server.all('/nodejs/*', checkServiceKeyCallback)
@@ -338,8 +387,9 @@ server.all('/nodejs/*', checkServiceKeyCallback)
   .get(backendSettings.serverStatsUrl, returnServerStats)
   .get(backendSettings.getActiveChannelsUrl, getActiveChannels)
   .get(backendSettings.kickUserUrl, kickUser)
-  .get(backendSettings.addUserToChannel, addUserToChannel)
-  .get(backendSettings.removeUserFromChannel, removeUserFromChannel)
+  .get(backendSettings.addUserToChannelUrl, addUserToChannel)
+  .get(backendSettings.removeUserFromChannelUrl, removeUserFromChannel)
+  .get(backendSettings.toggleDebugUrl, toggleDebug)
   .get('*', send404)
   .listen(backendSettings.port, backendSettings.host);
 
@@ -359,7 +409,9 @@ socket.on('connection', function(client) {
       return;
     } 
     if (socket.authenticatedClients[message.authkey]) {
-      console.log('Reusing existing authentication data for key "' + message.authkey + '"');
+      if (backendSettings.debug) {
+        console.log('Reusing existing authentication data for key "' + message.authkey + '"');
+      }
       setupClientConnection(client.sessionId, socket.authenticatedClients[message.authkey]);
     }
     else {
