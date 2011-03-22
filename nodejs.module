@@ -259,6 +259,13 @@ function nodejs_nodejs_user_channels($account) {
 }
 
 /**
+ * Implements hook_user_logout().
+ */
+function hook_user_logout($account) {
+  nodejs_kick_user($account->uid);
+}
+
+/**
  * Menu callback: checks the given key to see if it matches a valid session.
  */
 function nodejs_auth_check($auth_key) {
