@@ -261,7 +261,7 @@ function nodejs_nodejs_user_channels($account) {
 /**
  * Implements hook_user_logout().
  */
-function hook_user_logout($account) {
+function nodejs_user_logout($account) {
   nodejs_kick_user($account->uid);
 }
 
