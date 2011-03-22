@@ -96,7 +96,6 @@ function nodejs_get_js_handlers() {
  */
 function nodejs_menu() {
   return array(
-    // module settings
     'admin/config/nodejs' => array(
       'title' => 'Node.js configuration',
       'description' => 'Adjust node.js settings.',
@@ -300,8 +299,7 @@ function nodejs_get_config() {
  * @return string
  */
 function nodejs_get_url($config, $callback = '') {
-  $url = $config['scheme'] .'://'. $config['host'] .':'. $config['port'] .'/'. $callback;
-  return $url;
+  return $config['scheme'] . '://' . $config['host'] . ':' . $config['port'] . '/' . $callback;
 }
 
 /**
@@ -355,8 +353,7 @@ function theme_nodejs_stats_page(array $variables) {
  */
 function nodejs_get_server_stats() {
   $config = nodejs_get_config();
-  $url = nodejs_get_url($config, 'nodejs/stats/server');
-  $result = drupal_http_request($url);
+  $result = drupal_http_request(nodejs_get_url($config, 'nodejs/stats/server'));
   if (isset($result->error)) {
     return (object) array();
   }

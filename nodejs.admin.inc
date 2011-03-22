@@ -1,6 +1,4 @@
 <?php
-// $Id: $
-
 /**
  * @file
  * Admin page callbacks for the Node.js module.
@@ -40,3 +38,4 @@ function nodejs_settings() {
 
   return system_settings_form($form);
 }
+
