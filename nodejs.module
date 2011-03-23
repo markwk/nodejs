@@ -253,10 +253,6 @@ function nodejs_server_stats_page() {
           $items[] = t('!username (UID: @uid)', array('!username' => $name, '@uid' => $client->user->uid));
         }
       }
-      $variables = array(
-        'title' => t('Authenticated clients'),
-        'items' => $items,
-      );
       $page['content']['wrapper']['authenticated_clients'] = array(
         '#theme' => 'item_list',
         '#items' => $items,
@@ -278,10 +274,6 @@ function nodejs_server_stats_page() {
           $items[] = $channel;
         }
       }
-      $variables = array(
-        'title' => t('Channels'),
-        'items' => $items,
-      );
       $page['content']['wrapper']['channels'] = array(
         '#theme' => 'item_list',
         '#items' => $items,
