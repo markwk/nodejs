@@ -322,10 +322,15 @@ function nodejs_user_logout($account) {
 function nodejs_auth_check($auth_key) {
   $uid = db_query("SELECT uid FROM {sessions} WHERE MD5(sid) = :auth_key", array(':auth_key' => $auth_key))->fetchField();
   $auth_user = $uid > 0 ? user_load($uid) : drupal_anonymous_user();
+  $auth_user->auth_key = $auth_key;
   $auth_user->nodejs_valid_auth_key = $uid !== FALSE;
-  $auth_user->channels = module_invoke_all('nodejs_user_channels', $auth_user);
-  $nodejs_config = nodejs_get_config(); 
-  $auth_user->serviceKey = $nodejs_config['serviceKey'];
+
+  if ($auth_user->nodejs_valid_auth_key) {
+    $auth_user->channels = module_invoke_all('nodejs_user_channels', $auth_user);
+    $nodejs_config = nodejs_get_config(); 
+    $auth_user->serviceKey = $nodejs_config['serviceKey'];
+    module_invoke_all('nodejs_auth_check', $auth_user);
+  }
 
   drupal_json_output($auth_user);
   drupal_exit();
