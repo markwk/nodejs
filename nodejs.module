@@ -55,17 +55,6 @@ function nodejs_send_user_message($uid, $subject, $body) {
 }
 
 /**
- * Implements hook_theme().
- */
-function nodejs_theme($existing, $type, $theme, $path) {
-  return array(
-    'nodejs_stats_page' => array(
-      'variables' => array('stats' => new StdClass()),
-    ),
-  );
-}
-
-/**
  * Implements hook_init().
  */
 function nodejs_init() {
@@ -235,17 +224,79 @@ function nodejs_send_message(StdClass $message) {
 }
 
 /**
- * Menu callback: renders overall stats for the Node.js server.
+ * Menu callback generates render array with overall stats for the Node.js server.
  */
 function nodejs_server_stats_page() {
   $page = array(
     '#type' => 'page',
-    'content' => array(
-      'nodejs' => array(
-        '#markup' => theme('nodejs_stats_page', array('stats' => nodejs_get_server_stats())),
-      ),
-    ),
+    'content' => array(),
   );
+  $stats = nodejs_get_server_stats();
+  if (empty($stats)) {
+    $page['content']['error'] = array(
+      '#type' => 'item',
+      '#markup' => t('Error reading Node.js server stats.'),
+      '#prefix' => '<h3>',
+      '#suffix' => '</h3>',
+    );
+  }
+  else {
+    $page['content']['wrapper'] = array(
+      '#prefix' => '<div class="nodejs-server-stats">',
+      '#suffix' => '</div>',
+    );
+    if (is_array($stats->authenticatedClients) && count($stats->authenticatedClients)) {
+      $items = array();
+      foreach ($stats->authenticatedClients as $client) {
+        if (isset($client->user->uid)) {
+          $name = isset($client->user->name) ? l($client->user->name, $client->user->uid) : variable_get('anonymous', t('Anonymous'));
+          $items[] = t('!username (UID: @uid)', array('!username' => $name, '@uid' => $client->user->uid));
+        }
+      }
+      $variables = array(
+        'title' => t('Authenticated clients'),
+        'items' => $items,
+      );
+      $page['content']['wrapper']['authenticated_clients'] = array(
+        '#theme' => 'item_list',
+        '#items' => $items,
+        '#title' => t('Authenticated clients'),
+      );
+    }
+    else {
+      $page['content']['wrapper']['authenticated_clients'] = array(
+        '#type' => 'item',
+        '#markup' => t('There are no authenticated clients'),
+        '#prefix' => '<h3>',
+        '#suffix' => '</h3>',
+      );
+    }
+    if (is_array($stats->channels) && count($stats->channels)) {
+      $items = array();
+      foreach ($stats->channels as $channel) {
+        if (!empty($channel)) {
+          $items[] = $channel;
+        }
+      }
+      $variables = array(
+        'title' => t('Channels'),
+        'items' => $items,
+      );
+      $page['content']['wrapper']['channels'] = array(
+        '#theme' => 'item_list',
+        '#items' => $items,
+        '#title' => t('Channels'),
+      );
+    }
+    else {
+      $page['content']['wrapper']['channels'] = array(
+        '#type' => 'item',
+        '#markup' => t('There are no active channels'),
+        '#prefix' => '<h3>',
+        '#suffix' => '</h3>',
+      );
+    }
+  }
   return $page;
 }
 
@@ -261,7 +312,7 @@ function nodejs_nodejs_user_channels($account) {
 /**
  * Implements hook_user_logout().
  */
-function hook_user_logout($account) {
+function nodejs_user_logout($account) {
   nodejs_kick_user($account->uid);
 }
 
@@ -311,46 +362,66 @@ function nodejs_get_url($config, $callback = '') {
 }
 
 /**
- * Theme the server stats page
+ * Generate the server stats page
  * 
  * @param StdClass $stats 
  * @return string
  */
-function theme_nodejs_stats_page(array $variables) {
-  $stats = $variables['stats'];
+function nodejs_stats_page(stdClass $stats) {
   if (empty($stats)) {
-    return "Error reading Node.js server stats.";
+    return t('Error reading Node.js server stats.');
   }
   else {
     $html = '<div class="nodejs-server-stats">';
-    $html .= '<h3>Authenticated clients</h3>';
+    $output = array();
+    $output['wrapper'] = array(
+      '#prefix' => '<div class="nodejs-server-stats">',
+      '#suffix' => '</div>',
+    );
     if (is_array($stats->authenticatedClients) && count($stats->authenticatedClients)) {
-      $html .= '<ul>';
+      $items = array();
       foreach ($stats->authenticatedClients as $client) {
         if (isset($client->user->uid)) {
-          $html .= '<li>' . $client->user->name . ' (UID: ' . $client->user->uid . ')</li>';
+          $items[] = t('!username UID: %uid', array('!username' => l($client->user->name, $client->user->uid), '%uid' => $client->user->uid));
         }
       }
-      $html .= '</ul>';
+      $variables = array(
+        'title' => t('Authenticated clients'),
+        'items' => $items,
+      );
+      $output['wrapper']['authenticated_clients'] = array(
+        '#theme' => 'item_list',
+        '#items' => $items,
+        '#title' => t('Authenticated clients'),
+      );
+      $html .= theme('item_list', $variables);
     }
     else {
       $html .= '<p>There are no authenticated clients</p>';
     }
-    $html .= '<h3>Channels</h3>';
     if (is_array($stats->channels) && count($stats->channels)) {
-      $html .= '<ul>';
+      $items = array();
       foreach ($stats->channels as $channel) {
         if (!empty($channel)) {
-          $html .= '<li>' . $channel . '</li>';
+          $items[] = $channel;
         }
       }
-      $html .= '</ul>';
+      $variables = array(
+        'title' => t('Channels'),
+        'items' => $items,
+      );
+      $output['wrapper']['channels'] = array(
+        '#theme' => 'item_list',
+        '#items' => $items,
+        '#title' => t('Channels'),
+      );
+      $html .= theme('item_list', $variables);
     }
     else {
       $html .= '<p>There are no active channels</p>';
     }
     $html .= '</div>';
-    return $html;
+    return $output;
   }
 }
 
