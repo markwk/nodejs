@@ -293,8 +293,14 @@ var addUserToChannel = function(request, response) {
     }
     for (var authKey in socket.authenticatedClients) {
       if (socket.authenticatedClients[authKey].uid == uid) {
-        if (socket.authenticatedClients[authKey].channels.indexOf(channel) != -1) {
+        if (backendSettings.debug) {
+          console.log("Found uid '" + uid + "' in authenticatedClients, channels " + socket.authenticatedClients[authKey].channels.toString());
+        }
+        if (socket.authenticatedClients[authKey].channels.indexOf(channel) == -1) {
           socket.authenticatedClients[authKey].channels.push(channel);
+          if (backendSettings.debug) {
+            console.log("Added channel '" + channel + "' socket.authenticatedClients");
+          }
         }
       }
     }
