@@ -1,0 +1,142 @@
+<?php
+
+/**
+ * Implements hook_menu().
+ */
+function nodejs_config_menu() {
+  return array(
+    'admin/config/nodejs/js' => array(
+      'title' => 'Node.js server configuration',
+      'description' => 'Adjust Node.js server configuration.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('nodejs_config_form'),
+      'access arguments' => array('administer site configuration'),
+    ),
+  );
+}
+
+/**
+ * Node.js server configuration form.
+ * 
+ * @param mixed $form 
+ * @param mixed $form_state 
+ * @return array
+ */
+function nodejs_config_form($form, &$form_state) {
+  $form['config'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Settings',
+  );
+  $form['config']['nodejs_config_host'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Host',
+    '#required' => TRUE,
+    '#default_value' => variable_get('nodejs_config_host', 'localhost'),
+  );
+  $form['config']['nodejs_config_port'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Port',
+    '#required' => TRUE,
+    '#default_value' => variable_get('nodejs_config_port', '8080'),
+  );
+
+  $scheme = variable_get('nodejs_server_scheme', 'http');
+  $form['config']['nodejs_config_key'] = array(
+    '#type' => $scheme == 'https' ? 'textfield' : 'hidden',
+    '#title' => 'Key',
+    '#required' => TRUE,
+    '#default_value' => variable_get('nodejs_config_key', '/path/to/key/file'),
+  );  
+  $form['config']['nodejs_config_cert'] = array(
+    '#type' => $scheme == 'https' ? 'textfield' : 'hidden',
+    '#title' => 'Cert',
+    '#required' => TRUE,
+    '#default_value' => variable_get('nodejs_config_cert', '/path/to/cert/file'),
+  );
+
+  $form['config']['nodejs_config_resource'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Resource',
+    '#required' => TRUE,
+    '#default_value' => variable_get('nodejs_config_resource', '/node.js/realtime'),
+  );
+  $form['config']['nodejs_config_publishUrl'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Publish URL',
+    '#required' => TRUE,
+    '#default_value' => variable_get('nodejs_config_publishUrl', base_path() . 'nodejs/publish'),
+  );
+  $form['config']['nodejs_config_serviceKey'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Service Key',
+    '#default_value' => variable_get('nodejs_config_serviceKey', ''),
+  );
+  $form['config']['backend'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Backend',
+  );
+  $form['config']['backend']['nodejs_config_backend_host'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Host',
+    '#required' => TRUE,
+    '#default_value' => variable_get('nodejs_config_backend_host', 'localhost'),
+  );
+  $form['config']['backend']['nodejs_config_backend_port'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Port',
+    '#required' => TRUE,
+    '#default_value' => variable_get('nodejs_config_backend_port', '80'),
+  );
+  $form['config']['backend']['nodejs_config_backend_authPath'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Auth Path',
+    '#default_value' => variable_get('nodejs_config_backend_authPath', '/nodejs/auth/'),
+  );
+  $form['config']['backend']['nodejs_config_debug'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Debug',
+    '#default_value' => variable_get('nodejs_config_debug', '0'),
+  );
+  $form['#submit'][] = 'nodejs_config_form_submit';
+  return system_settings_form($form);
+}
+
+/**
+ * Node.js server configuration form submit handler.
+ * 
+ * @param mixed $form 
+ * @param mixed $form_state 
+ */
+function nodejs_config_form_submit($form, &$form_state) {
+  $values = $form_state['values'];
+  $file = drupal_get_path('module', 'nodejs') . '/nodejs.config.js';
+  $array = array(
+    'scheme' => variable_get('nodejs_server_scheme', 'http'),
+    'host' => $values['nodejs_config_host'],
+    'port' => $values['nodejs_config_port'],
+    'key' => $values['nodejs_config_key'],
+    'cert' => $values['nodejs_config_cert'],
+    'resource' => $values['nodejs_config_resource'],
+    'publishUrl' => $values['nodejs_config_publishUrl'],
+    'serviceKey' => $values['nodejs_config_serviceKey'],
+    'debug' => $values['nodejs_config_debug'],
+    'backend' => array(
+      'port' => $values['nodejs_config_backend_port'],
+      'host' => $values['nodejs_config_backend_host'],
+      'authPath' => $values['nodejs_config_backend_authPath'],
+    ),
+  );
+  $output = 'backendSettings = ' . drupal_json_encode($array);
+  $output = str_replace(array('= {', ',', '}}', ':{', '\/'), array("= {\n  ", ",\n  ", "\n  }\n}", ":{\n  ",  '/'), $output);
+
+  $js = @fopen($file, 'w');
+  if ($js === FALSE) {
+    drupal_set_message(t('It was not possible to write the bellow lines to <b>!file</b>, you need to do it manually.', array('!file' => $file)));
+    drupal_set_message('<pre>' . $output . '</pre>');
+  } 
+  else {
+    fwrite($js, $output);
+    fclose($js);
+  }
+}
+
