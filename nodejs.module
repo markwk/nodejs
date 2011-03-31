@@ -259,8 +259,13 @@ function nodejs_server_stats_page() {
       $items = array();
       foreach ($stats->authenticatedClients as $client) {
         if (isset($client->user->uid)) {
-          $name = isset($client->user->name) ? l($client->user->name, $client->user->uid) : variable_get('anonymous', t('Anonymous'));
-          $items[] = t('!username (UID: @uid)', array('!username' => $name, '@uid' => $client->user->uid));
+          if (!isset($client->user->name)) {
+            $client->user->name = t(variable_get('anonymous', 'Anonymous'));
+          }
+          else {
+            $client->user->name = user_access('access user profiles') ? l($client->user->name, 'user/' . $client->user->uid) : $client->user->name;
+          }
+          $items[] = t('!username (UID: @uid)', array('!username' => $client->user->name, '@uid' => $client->user->uid));
         }
       }
       $page['content']['wrapper']['authenticated_clients'] = array(
