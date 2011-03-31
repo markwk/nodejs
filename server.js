@@ -38,12 +38,11 @@ function authenticateClient(client, message) {
     host: backendSettings.backend.host,
     path: backendSettings.backend.authPath + message.authkey
   };
-  var response;
   if (backendSettings.backend.scheme == 'https') {
-    response = https.get(options, authenticateClientCallback);
+    https.get(options, authenticateClientCallback);
   }
   else {
-    response = http.get(options, authenticateClientCallback);
+    http.get(options, authenticateClientCallback);
   }
   function authenticateClientCallback(response) {
     response.on('data', function (chunk) {
@@ -424,6 +423,9 @@ socket.on('connection', function(client) {
       setupClientConnection(client.sessionId, socket.authenticatedClients[message.authkey]);
     }
     else {
+      if (backendSettings.debug) {
+        console.log('Authenticating client with key "' + message.authkey + '"');
+      }
       authenticateClient(client, message);
     }
   });
