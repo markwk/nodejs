@@ -137,7 +137,7 @@ var publishMessage = function (request, response) {
     }
     if (message.broadcast) {
       if (backendSettings.debug) {
-        console.log('Broadcasting to ' + message.channel);
+        console.log('Broadcasting message');
       }
       socket.broadcast(chunk);
       sentCount = socket.clients.length;
@@ -152,21 +152,24 @@ var publishMessage = function (request, response) {
 /**
  * Publish a message to clients subscribed to a channel.
  */
-var publishMessageToChannel = function (message, jsonString) {
+var publishMessageToChannel = function (options, message) {
   var clientCount = 0;
-  if (socket.channels[message.channel]) {
-    for (var sessionId in socket.channels[message.channel].sessionIds) {
+  if (!options.hasOwnProperty('channel')) {
+    console.log('publishMessageToChannel: An invalid options object was provided.');
+  }
+  else if (!socket.channels.hasOwnProperty(options.channel)) {
+    console.log('publishMessageToChannel: The channel "' + options.channel + '" doesn\'t exist.');
+  }
+  else {
+    for (var sessionId in socket.channels[options.channel].sessionIds) {
       if (socket.clients[sessionId]) {
-        socket.clients[sessionId].send(jsonString);
+        socket.clients[sessionId].send(message);
         clientCount++;
       }
     }
     if (backendSettings.debug) {
-      console.log('Sent message to ' + clientCount + ' clients in channel "' + message.channel + '"');
+      console.log('Sent message to ' + clientCount + ' clients in channel "' + options.channel + '"');
     }
-  }
-  else {
-    console.log('No channel "' + message.channel + '" to send to');
   }
   return clientCount;
 }
@@ -240,7 +243,7 @@ var returnServerStats = function(request, response) {
     'authenticatedClients': clients
   };
   if (backendSettings.debug) {
-    console.log('returnServerStats: returning server stats --> ' . stats.toString());
+    console.log('returnServerStats: returning server stats --> ' + stats);
   }
   response.send(stats);
 };
