@@ -96,24 +96,24 @@ function nodejs_menu() {
       'file path' => drupal_get_path('module', 'system'),
     ),
     'admin/config/nodejs/config' => array(
-      'title' => 'Node.js configuration',
+      'title' => 'Configuration',
       'description' => 'Adjust node.js settings.',
       'page callback' => 'drupal_get_form',
       'page arguments' => array('nodejs_settings'),
       'access arguments' => array('administer site configuration'),
       'file' => 'nodejs.admin.inc',
     ),
+    'admin/config/nodejs/stats' => array(
+      'title' => 'Server stats',
+      'description' => 'View statistics from the node.js server.',
+      'page callback' => 'nodejs_server_stats_page',
+      'access arguments' => array('access node.js server stats'),
+    ),
     'nodejs/auth/%' => array(
       'title' => 'Who goes there?',
       'page callback' => 'nodejs_auth_check',
       'page arguments' => array(2),
       'access callback' => TRUE,
-      'type' => MENU_CALLBACK,
-    ),
-    'nodejs/stats' => array(
-      'title' => 'Node.js server stats',
-      'page callback' => 'nodejs_server_stats_page',
-      'access arguments' => array('access node.js server stats'),
       'type' => MENU_CALLBACK,
     ),
     'nodejs/user/channel/add' => array(
@@ -255,7 +255,7 @@ function nodejs_server_stats_page() {
       '#prefix' => '<div class="nodejs-server-stats">',
       '#suffix' => '</div>',
     );
-    if (is_array($stats->authenticatedClients) && count($stats->authenticatedClients)) {
+    if (isset($stats->authenticatedClients) && is_array($stats->authenticatedClients) && count($stats->authenticatedClients)) {
       $items = array();
       foreach ($stats->authenticatedClients as $client) {
         if (isset($client->user->uid)) {
@@ -282,7 +282,7 @@ function nodejs_server_stats_page() {
         '#suffix' => '</h3>',
       );
     }
-    if (is_array($stats->channels) && count($stats->channels)) {
+    if (isset($stats->channels) && is_array($stats->channels) && count($stats->channels)) {
       $items = array();
       foreach ($stats->channels as $channel) {
         if (!empty($channel)) {
@@ -381,12 +381,10 @@ function nodejs_get_url($config, $callback = '') {
 function nodejs_get_server_stats() {
   $config = nodejs_get_config();
   $result = drupal_http_request(nodejs_get_url($config, 'nodejs/stats/server'));
-  if (isset($result->error)) {
-    return (object) array();
-  }
-  else {
+  if (!isset($result->error) && isset($result->data)) {
     return (object) json_decode($result->data);
   }
+  return FALSE;
 }
 
 /**
