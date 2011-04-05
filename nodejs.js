@@ -31,13 +31,12 @@ Drupal.behaviors.nodejs = {
         {secure: Drupal.settings.nodejs.secure, port: Drupal.settings.nodejs.port, resource: Drupal.settings.nodejs.resource}
       );
       Drupal.Nodejs.socket.on('message', function(newMessage) {
-        newMessage = JSON.parse(newMessage);
         Drupal.Nodejs.runCallbacks(newMessage);
       });
       Drupal.Nodejs.socket.connect();
-      var jsonMessage = JSON.stringify({
+      var jsonMessage = {
         authkey: Drupal.settings.nodejs.authkey
-      });
+      };
       Drupal.Nodejs.socket.send(jsonMessage);
     }
   }
