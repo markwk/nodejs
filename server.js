@@ -139,11 +139,11 @@ var publishMessage = function (request, response) {
       if (backendSettings.debug) {
         console.log('Broadcasting message');
       }
-      socket.broadcast(chunk);
+      socket.broadcast(message);
       sentCount = socket.clients.length;
     }
     else {
-      sentCount = publishMessageToChannel(message, chunk);
+      sentCount = publishMessageToChannel(message);
     }
     response.send({sent: sentCount});
   });
@@ -152,23 +152,23 @@ var publishMessage = function (request, response) {
 /**
  * Publish a message to clients subscribed to a channel.
  */
-var publishMessageToChannel = function (options, message) {
+var publishMessageToChannel = function (message) {
   var clientCount = 0;
-  if (!options.hasOwnProperty('channel')) {
-    console.log('publishMessageToChannel: An invalid options object was provided.');
+  if (!message.hasOwnProperty('channel')) {
+    console.log('publishMessageToChannel: An invalid message object was provided.');
   }
-  else if (!socket.channels.hasOwnProperty(options.channel)) {
-    console.log('publishMessageToChannel: The channel "' + options.channel + '" doesn\'t exist.');
+  else if (!socket.channels.hasOwnProperty(message.channel)) {
+    console.log('publishMessageToChannel: The channel "' + message.channel + '" doesn\'t exist.');
   }
   else {
-    for (var sessionId in socket.channels[options.channel].sessionIds) {
+    for (var sessionId in socket.channels[message.channel].sessionIds) {
       if (socket.clients[sessionId]) {
         socket.clients[sessionId].send(message);
         clientCount++;
       }
     }
     if (backendSettings.debug) {
-      console.log('Sent message to ' + clientCount + ' clients in channel "' + options.channel + '"');
+      console.log('Sent message to ' + clientCount + ' clients in channel "' + message.channel + '"');
     }
   }
   return clientCount;
@@ -410,15 +410,11 @@ socket.authenticatedClients = {};
 socket.statistics = {};
 
 socket.on('connection', function(client) {
-  client.on('message', function(messageString) {
-    var message = false;
-    try {
-      message = JSON.parse(messageString);
-    }
-    catch (exception) {
-      console.log('Failed to parse authentication message: ' + exception);
+  client.on('message', function(message) {
+    if (!message || !message.hasOwnProperty('authkey')) {
+      console.log('Invalid message from client ' + client.sessionId);
       return;
-    } 
+    }
     if (socket.authenticatedClients[message.authkey]) {
       if (backendSettings.debug) {
         console.log('Reusing existing authentication data for key "' + message.authkey + '"');
