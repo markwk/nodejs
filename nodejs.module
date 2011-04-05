@@ -55,6 +55,40 @@ function nodejs_send_user_message($uid, $subject, $body) {
 }
 
 /**
+ * Send a message to multiple users.
+ *
+ * @param string|array $uids A list of uid seperated by comma (,) or an array of uids
+ * @param string $subject
+ * @param string $body
+ */
+function nodejs_send_user_message_multiple($uids, $subject, $body) {
+  if (!is_array($uids)) {
+    $uids = explode(',', $uids);
+  }
+  foreach ($uids as $uid) {
+    nodejs_send_user_message($uid, $subject, $body);
+  }
+}
+
+/**
+ * Send a message to users in a role.
+ *
+ * @param string $role_name
+ * @param string $subject
+ * @param string $body
+ */
+function nodejs_send_role_message($role_name, $subject, $body) {
+  $query  = db_select('users', 'u');
+  $query->join('users_roles','ur','ur.uid = u.uid');
+  $query->join('role','r','ur.rid = r.rid');
+  $uids = $query->fields('u',array('uid'))
+            ->condition('r.name', $role_name)
+            ->execute()
+            ->fetchCol();
+  nodejs_send_user_message_multiple($uids, $subject, $body);
+}
+
+/**
  * Implements hook_init().
  */
 function nodejs_init() {

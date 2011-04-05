@@ -9,6 +9,10 @@ function nodejs_drush_help($section) {
      return dt('Broadcast a message to all connected cliets.');
     case 'drush:user-message':
      return dt('Send a message to a given user.');
+    case 'drush:user-message-multiple':
+     return dt('Send a message to a the given list of users.');
+    case 'drush:role-message':
+     return dt('Send a message to all user with the given role.');
     case 'drush:kick-user':
      return dt('Kick the given user off the node.js server.');
   }
@@ -31,6 +35,24 @@ function nodejs_drush_command() {
     'description' => 'Send a message to a given user.',
     'arguments' => array(
       'uid' => 'The user id of the message recipient.',
+      'subject' => 'The subject of the message.',
+      'body' => 'The body of message.',
+    ),
+  );
+  $items['user-message-multiple'] = array(
+    'callback' => 'nodejs_send_user_message_multiple',
+    'description' => 'Send a message to multiple users.',
+    'arguments' => array(
+      'uids' => 'The user ids of the message recipients, seperated by comma(,)',
+      'subject' => 'The subject of the message.',
+      'body' => 'The body of message.',
+    ),
+  );
+  $items['role-message'] = array(
+    'callback' => 'nodejs_send_role_message',
+    'description' => 'Send a message to users in a role.',
+    'arguments' => array(
+      'role' => 'The role name',
       'subject' => 'The subject of the message.',
       'body' => 'The body of message.',
     ),
