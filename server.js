@@ -80,7 +80,7 @@ function authenticateClient(client, message) {
  * Callback that wraps all requests and checks for a valid service key.
  */
 var checkServiceKeyCallback = function (request, response, next) {
-  if (checkServiceKey(request.header('Nodejs-Service-Key', ''))) {
+  if (checkServiceKey(request.header('NodejsServiceKey', ''))) {
     next();
   }
   else {
