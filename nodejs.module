@@ -370,9 +370,9 @@ function nodejs_auth_check($auth_key) {
     $auth_user->channels = module_invoke_all('nodejs_user_channels', $auth_user);
     $nodejs_config = nodejs_get_config(); 
     $auth_user->serviceKey = $nodejs_config['serviceKey'];
+    drupal_add_http_header('NodejsServiceKey', $nodejs_config['serviceKey']);
     module_invoke_all('nodejs_auth_check', $auth_user);
   }
-
   drupal_json_output($auth_user);
   drupal_exit();
 }
@@ -481,7 +481,7 @@ class Nodejs {
   public static function initConfig() {
     if (!isset(self::$config)) {
       self::$config = nodejs_get_config();
-      self::$headers = array('Nodejs-Service-Key' => self::$config['serviceKey']);
+      self::$headers = array('NodejsServiceKey' => self::$config['serviceKey']);
       self::$baseUrl = nodejs_get_url(self::$config);
     }
   }
