@@ -35,6 +35,7 @@ Drupal.behaviors.nodejs = {
       });
       Drupal.Nodejs.socket.connect();
       var jsonMessage = {
+        type: 'authenticate',
         authkey: Drupal.settings.nodejs.authkey
       };
       Drupal.Nodejs.socket.send(jsonMessage);

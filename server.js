@@ -12,22 +12,45 @@ var http = require('http'),
     fs = require('fs'),
     express = require('express'),
     io = require('socket.io'),
-    sys = require(process.binding('natives').util ? 'util' : 'sys'),
+    util = require('util'),
     vm = require('vm');
 
 try {
   var backendSettings = vm.runInThisContext(fs.readFileSync(__dirname + '/nodejs.config.js'));
-  backendSettings.serverStatsUrl = '/nodejs/stats/server';
-  backendSettings.getActiveChannelsUrl = '/nodejs/stats/channels';
-  backendSettings.kickUserUrl = '/nodejs/user/kick/:uid';
-  backendSettings.addUserToChannelUrl = '/nodejs/user/channel/add/:channel/:uid';
-  backendSettings.removeUserFromChannelUrl = '/nodejs/user/channel/remove/:channel/:uid';
-  backendSettings.toggleDebugUrl = '/nodejs/debug/toggle';
 }
 catch (exception) {
   console.log("Failed to read config file, exiting: " + exception);
   process.exit(1);
 }
+
+// Load server extensions
+var extensions = [];
+if (backendSettings.extensions && backendSettings.extensions.length) {
+  var num = backendSettings.extensions.length,
+    i,
+    extfn;
+  for (i = 0; i < num; i++) {
+    extfn = backendSettings.extensions[i];
+    try {
+      // Load JS files for extensions as modules, and collect the returned
+      // object for each extension.
+      extensions.push(require(__dirname + '/' + extfn));
+      console.log("Extension loaded: " + extfn);
+    }
+    catch (exception) {
+      console.log("Failed to load extension " + extfn + " [" + exception + "]");
+      process.exit(1);
+    }
+  }
+}
+
+// Initialize other default settings
+backendSettings.serverStatsUrl = '/nodejs/stats/server';
+backendSettings.getActiveChannelsUrl = '/nodejs/stats/channels';
+backendSettings.kickUserUrl = '/nodejs/user/kick/:uid';
+backendSettings.addUserToChannelUrl = '/nodejs/user/channel/add/:channel/:uid';
+backendSettings.removeUserFromChannelUrl = '/nodejs/user/channel/remove/:channel/:uid';
+backendSettings.toggleDebugUrl = '/nodejs/debug/toggle';
 
 /**
  * Authenticate a client connection based on the message it sent.
@@ -162,8 +185,7 @@ var publishMessageToChannel = function (message) {
   }
   else {
     for (var sessionId in socket.channels[message.channel].sessionIds) {
-      if (socket.clients[sessionId]) {
-        socket.clients[sessionId].send(message);
+      if (publishMessageToClient(sessionId, message)) {
         clientCount++;
       }
     }
@@ -173,6 +195,20 @@ var publishMessageToChannel = function (message) {
   }
   return clientCount;
 }
+
+/**
+ * Publish a message to a specific client.
+ */
+var publishMessageToClient = function (sessionId, message) {
+  if (socket.clients[sessionId]) {
+    socket.clients[sessionId].send(message);
+    if (backendSettings.debug) {
+      console.log('Sent message to client ' + sessionId);
+    }
+    return true;
+  }
+  return false;
+};
 
 /**
  * Sends a 404 message.
@@ -262,7 +298,7 @@ var getNodejsSessionIdsFromUid = function(uid) {
 }
 
 /**
- * Add a use to a channel.
+ * Add a user to a channel.
  */
 var addUserToChannel = function(request, response) {
   var uid = request.params.uid || '';
@@ -311,6 +347,32 @@ var addUserToChannel = function(request, response) {
     console.log("Missing uid or channel");
     response.send({'status': 'failed', 'error': 'Missing uid or channel'});
   }
+};
+
+/**
+ * Add a client (specified by session ID) to a channel.
+ */
+var addClientToChannel = function(sessionId, channel) {
+  if (sessionId && channel) {
+    if (!/^[0-9]+$/.test(sessionId) || !socket.clients.hasOwnProperty(sessionId)) {
+      console.log("addClientToChannel: Invalid sessionId: " + sessionId);
+    }
+    else if (!/^[a-z0-9_]+$/i.test(channel)) {
+      console.log("addClientToChannel: Invalid channel: " + channel);
+    }
+    else {
+      socket.channels[channel] = socket.channels[channel] || {'sessionIds': {}};
+      socket.channels[channel].sessionIds[sessionId] = sessionId;
+      if (backendSettings.debug) {
+        console.log("Added channel '" + channel + "' to sessionId " + sessionId);
+      }
+      return true;
+    }
+  }
+  else {
+    console.log("addClientToChannel: Missing sessionId or channel name");
+  }
+  return false;
 };
 
 /**
@@ -375,7 +437,9 @@ var setupClientConnection = function(sessionId, authData) {
     socket.channels[authData.channels[i]] = socket.channels[authData.channels[i]] || {'sessionIds': {}};
     socket.channels[authData.channels[i]].sessionIds[sessionId] = sessionId;
   }
-}
+  socket.clients[sessionId].send({'status': 'authenticated'});
+  process.emit('client-authenticated', sessionId);
+};
 
 var server;
 if (backendSettings.scheme == 'https') {
@@ -410,25 +474,68 @@ socket.authenticatedClients = {};
 socket.statistics = {};
 
 socket.on('connection', function(client) {
+  process.emit('client-connection', client.sessionId);
+
   client.on('message', function(message) {
-    if (!message || !message.hasOwnProperty('authkey')) {
-      console.log('Invalid message from client ' + client.sessionId);
+    if (!message) {
       return;
     }
+
+    // If the message is from an active client, then process it
+    if (socket.clients[client.sessionId] && message.hasOwnProperty('type') && message.type != 'authenticate') {
+      if (backendSettings.debug) {
+        console.log('Received message from client ' + client.sessionId);
+      }
+      process.emit('client-message', client.sessionId, message);
+      return;
+    }
+
+    // If the new client has an authKey that the server has verified, then
+    // initiate a connection with the client
     if (socket.authenticatedClients[message.authkey]) {
       if (backendSettings.debug) {
         console.log('Reusing existing authentication data for key "' + message.authkey + '"');
       }
       setupClientConnection(client.sessionId, socket.authenticatedClients[message.authkey]);
+      return;
     }
-    else {
-      if (backendSettings.debug) {
-        console.log('Authenticating client with key "' + message.authkey + '"');
-      }
-      authenticateClient(client, message);
+
+    // Otherwise, authenticate the new client with the Drupal site
+    if (backendSettings.debug) {
+      console.log('Authenticating client with key "' + message.authkey + '"');
     }
+    authenticateClient(client, message);
   });
-}).on('error', function(exception) {
-  console.log(exception);
+
+  client.on('disconnect', function () {
+    process.emit('client-disconnect', client.sessionId);
+  });
+})
+.on('error', function(exception) {
+  console.log('Socket error [' + exception + ']');
 });
+
+/**
+ * Invokes the specified function on all registered server extensions.
+ */
+function invokeExtensions(hook) {
+  var args = arguments.length ? Array.prototype.slice.call(arguments, 1) : [];
+  for (var i in extensions) {
+    if (extensions[i].hasOwnProperty(hook) && extensions[i][hook].apply) {
+      extensions[i][hook].apply(this, args);
+    }
+  }
+}
+
+/**
+ * Define a configuration object to pass to all server extensions at
+ * initialization. The extensions do not have access to this namespace,
+ * so we provide them with references.
+ */
+var extensionsConfig = {
+  'publishMessageToChannel': publishMessageToChannel,
+  'publishMessageToClient': publishMessageToClient,
+  'addClientToChannel': addClientToChannel
+};
+invokeExtensions('setup', extensionsConfig);
 
