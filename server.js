@@ -10,13 +10,14 @@ var http = require('http'),
     https = require('https'),
     url = require('url'),
     fs = require('fs'),
+    process = require('process'),
     express = require('express'),
     io = require('socket.io'),
     util = require('util'),
     vm = require('vm');
 
 try {
-  var backendSettings = vm.runInThisContext(fs.readFileSync(__dirname + '/nodejs.config.js'));
+  var backendSettings = vm.runInThisContext(fs.readFileSync(process.cwd() + '/nodejs.config.js'));
 }
 catch (exception) {
   console.log("Failed to read config file, exiting: " + exception);
