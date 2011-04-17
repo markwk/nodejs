@@ -158,7 +158,7 @@ var publishMessage = function (request, response) {
     }
     catch (exception) {
       console.log('Invalid JSON "' + chunk + '": ' + exception);
-      response.send({error: 'Invalid JSON, error: ' + e.toString()});
+      response.send({error: 'Invalid JSON, error: ' + exception.toString()});
       return;
     }
     if (message.broadcast) {
