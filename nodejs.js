@@ -1,7 +1,7 @@
 
 (function ($) {
 
-Drupal.Nodejs = Drupal.Nodejs || {'callbacks': {}, 'socket': false};
+Drupal.Nodejs = Drupal.Nodejs || {'callbacks': {}, 'socket': false, 'connectionSetupHandlers': {}};
 
 Drupal.Nodejs.runCallbacks = function (message) {
   if (message.callback && $.isFunction(Drupal.Nodejs.callbacks[message.callback].callback)) {
@@ -23,7 +23,7 @@ Drupal.Nodejs.runCallbacks = function (message) {
 };
 
 Drupal.Nodejs.runSetupHandlers = function (type, error) {
-  $.each(Drupal.Nodejs.connectionSetupHandler, function () {
+  $.each(Drupal.Nodejs.connectionSetupHandlers, function () {
     if ($.isFunction(this[type])) {
       try {
         if (typeof(error) == 'undefined') {
