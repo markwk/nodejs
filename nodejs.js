@@ -22,6 +22,22 @@ Drupal.Nodejs.runCallbacks = function (message) {
   }
 };
 
+Drupal.Nodejs.runSetupHandlers = function (type, error) {
+  $.each(Drupal.Nodejs.connectionSetupHandler, function () {
+    if ($.isFunction(this[type])) {
+      try {
+        if (typeof(error) == 'undefined') {
+          this[type]();
+        }
+        else {
+          this[type](error);
+        }
+      }
+      catch (exception) {}
+    }
+  });
+};
+
 Drupal.behaviors.nodejs = {
   attach: function (context, settings) {
     if (!Drupal.Nodejs.socket) {
@@ -30,15 +46,34 @@ Drupal.behaviors.nodejs = {
         Drupal.settings.nodejs.host,
         {secure: Drupal.settings.nodejs.secure, port: Drupal.settings.nodejs.port, resource: Drupal.settings.nodejs.resource}
       );
+
       Drupal.Nodejs.socket.on('message', function(newMessage) {
         Drupal.Nodejs.runCallbacks(newMessage);
       });
-      Drupal.Nodejs.socket.connect();
-      var jsonMessage = {
-        type: 'authenticate',
-        authkey: Drupal.settings.nodejs.authkey
-      };
-      Drupal.Nodejs.socket.send(jsonMessage);
+
+      try {
+        Drupal.Nodejs.socket.connect();
+        Drupal.Nodejs.runSetupHandlers('connectionSuccess');
+      }
+      catch (exception) {
+        Drupal.Nodejs.socket = false;
+        Drupal.Nodejs.runSetupHandlers('connectionFailure', exception);
+        return;
+      }
+
+      try {
+        var authMessage = {
+          type: 'authenticate',
+          authkey: Drupal.settings.nodejs.authkey
+        };
+        Drupal.Nodejs.socket.send(authMessage);
+        Drupal.Nodejs.runSetupHandlers('authSuccess');
+      }
+      catch (exception) {
+        Drupal.Nodejs.socket = false;
+        Drupal.Nodejs.runSetupHandlers('authFailure', exception);
+        return;
+      }
     }
   }
 };
