@@ -76,6 +76,9 @@ function authenticateClient(client, message) {
       }
       catch (exception) {
         console.log('Failed to parse authentication message: ' + exception);
+        if (backendSettings.debug) {
+            console.log('Failed message string: ' + chunk);
+        }
         return;
       }
       if (!checkServiceKey(authData.serviceKey)) {
