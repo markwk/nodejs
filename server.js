@@ -62,13 +62,19 @@ function authenticateClient(client, message) {
     path: backendSettings.backend.authPath + message.authkey
   };
   if (backendSettings.backend.scheme == 'https') {
-    https.get(options, authenticateClientCallback);
+    https.get(options, authenticateClientCallback)
+      .on('error', authenticateErrorCallback);
   }
   else {
-    http.get(options, authenticateClientCallback);
+    http.get(options, authenticateClientCallback)
+      .on('error', authenticateErrorCallback);
   }
   function authenticateClientCallback(response) {
     response.on('data', function (chunk) {
+      if (response.statusCode == 404) {
+        console.log('Backend authentication url not found.');
+        return;
+      }
       response.setEncoding('utf8');
       var authData = false;
       try {
@@ -77,7 +83,7 @@ function authenticateClient(client, message) {
       catch (exception) {
         console.log('Failed to parse authentication message: ' + exception);
         if (backendSettings.debug) {
-            console.log('Failed message string: ' + chunk);
+          console.log('Failed message string: ' + chunk);
         }
         return;
       }
@@ -96,9 +102,10 @@ function authenticateClient(client, message) {
         console.log('Invalid login for uid "' + authData.uid + '"');
         delete socket.authenticatedClients[message.authkey];
       }
-    }).on('error', function(exception) {
-      console.log("Error hitting backend with authentication token: " + exception);
     });
+  }
+  function authenticateErrorCallback(exception) {
+    console.log("Error hitting backend with authentication token: " + exception);
   }
 }
 
