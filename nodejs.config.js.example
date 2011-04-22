@@ -57,5 +57,5 @@ backendSettings = {
     'host': 'your.drupal.sites.hostname',
     'authPath': '/nodejs/auth/'
    },
-   'extensions' => []
+   'extensions': []
 };
