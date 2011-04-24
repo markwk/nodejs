@@ -69,7 +69,7 @@ var authenticateClient = function (client, message) {
   var options = {
     port: backendSettings.backend.port,
     host: backendSettings.backend.host,
-    path: '/some/booaoao' + backendSettings.backend.authPath + message.authkey
+    path: backendSettings.backend.authPath + message.authkey
   };
   if (backendSettings.backend.scheme == 'https') {
     https.get(options, authenticateClientCallback)
