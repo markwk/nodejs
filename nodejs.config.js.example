@@ -42,6 +42,12 @@
  * extensions: An array of names of node.js modules that should be loaded as
  * extensions to the node.js server.
  *
+ * clientsCanWriteToChannels: global flag that allows all channels to be written
+ * to by client sockets without going via the backend. defaults to false
+ *
+ * clientsCanWriteToClients: global flag that allows all clients to be written
+ * to by client sockets without going via the backend. defaults to false
+ *
  */
 backendSettings = {
   'scheme': 'http',
@@ -57,5 +63,8 @@ backendSettings = {
     'host': 'your.drupal.sites.hostname',
     'authPath': '/nodejs/auth/'
    },
-   'extensions': []
+   'extensions': [],
+   'clientsCanWriteToChannels': false,
+   'clientsCanWriteToClients': false
 };
+

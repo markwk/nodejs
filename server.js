@@ -1,9 +1,9 @@
 /**
  * Provides Node.js - Drupal integration. 
  *
- * This code is alpha quality.
+ * This code is beta quality.
  *
- * Expect bugs, big API changes, etc.
+ * Expect bugs, but not API changes as we prepare for 1.0 release.
  */
 
 var http = require('http'),
@@ -53,13 +53,23 @@ backendSettings.removeUserFromChannelUrl = '/nodejs/user/channel/remove/:channel
 backendSettings.toggleDebugUrl = '/nodejs/debug/toggle';
 
 /**
+ * Check if the given channel is client-writable.
+ */
+var channelIsClientWritable = function (channel) {
+  if (socket.channels.hasOwnProperty(channel)) {
+    return socket.channels[channel].isClientWritable;
+  }
+  return false;
+}
+
+/**
  * Authenticate a client connection based on the message it sent.
  */
-function authenticateClient(client, message) {
+var authenticateClient = function (client, message) {
   var options = {
     port: backendSettings.backend.port,
     host: backendSettings.backend.host,
-    path: backendSettings.backend.authPath + message.authkey
+    path: '/some/booaoao' + backendSettings.backend.authPath + message.authkey
   };
   if (backendSettings.backend.scheme == 'https') {
     https.get(options, authenticateClientCallback)
@@ -72,7 +82,8 @@ function authenticateClient(client, message) {
   function authenticateClientCallback(response) {
     response.on('data', function (chunk) {
       if (response.statusCode == 404) {
-        console.log('Backend authentication url not found.');
+        console.log('Backend authentication url not found, tried using these options: ');
+        console.log(options);
         return;
       }
       response.setEncoding('utf8');
@@ -186,22 +197,23 @@ var publishMessage = function (request, response) {
  * Publish a message to clients subscribed to a channel.
  */
 var publishMessageToChannel = function (message) {
-  var clientCount = 0;
   if (!message.hasOwnProperty('channel')) {
     console.log('publishMessageToChannel: An invalid message object was provided.');
+	return 0;
   }
-  else if (!socket.channels.hasOwnProperty(message.channel)) {
+  if (!socket.channels.hasOwnProperty(message.channel)) {
     console.log('publishMessageToChannel: The channel "' + message.channel + '" doesn\'t exist.');
+	return 0;
   }
-  else {
-    for (var sessionId in socket.channels[message.channel].sessionIds) {
-      if (publishMessageToClient(sessionId, message)) {
-        clientCount++;
-      }
+
+  var clientCount = 0;
+  for (var sessionId in socket.channels[message.channel].sessionIds) {
+    if (publishMessageToClient(sessionId, message)) {
+      clientCount++;
     }
-    if (backendSettings.debug) {
-      console.log('Sent message to ' + clientCount + ' clients in channel "' + message.channel + '"');
-    }
+  }
+  if (backendSettings.debug) {
+    console.log('Sent message to ' + clientCount + ' clients in channel "' + message.channel + '"');
   }
   return clientCount;
 }
@@ -491,12 +503,31 @@ socket.on('connection', function(client) {
       return;
     }
 
-    // If the message is from an active client, then process it
+    // If the message is from an active client, then process it.
     if (socket.clients[client.sessionId] && message.hasOwnProperty('type') && message.type != 'authenticate') {
       if (backendSettings.debug) {
         console.log('Received message from client ' + client.sessionId);
       }
-      process.emit('client-message', client.sessionId, message);
+
+      // If this message is destined for a channel, check that writing to 
+      // channels from client sockets is allowed.
+	  if (message.hasOwnProperty('channel')) {
+        if (backenSettings.clientsCanWriteToChannels || channelIsClientWritable(message.channel)) {
+          process.emit('client-message', client.sessionId, message);
+        }
+        else if (backendSettings.debug) {
+          console.log('Received unauthorised message from client ' + client.sessionId);
+        }
+	  }
+
+      // No channel, so this message is destined for one or more clients. Check
+      // that this is allowed in the server configuration.
+      if (backendSettings.clientsCanWriteToClients) {
+        process.emit('client-message', client.sessionId, message);
+      }
+      else if (backendSettings.debug) {
+        console.log('Received unauthorised message from client ' + client.sessionId);
+      }
       return;
     }
 
@@ -548,4 +579,6 @@ var extensionsConfig = {
   'addClientToChannel': addClientToChannel
 };
 invokeExtensions('setup', extensionsConfig);
+
+// vi:ai:expandtab:sw=2 ts=2
 
