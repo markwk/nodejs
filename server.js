@@ -82,8 +82,13 @@ var authenticateClient = function (client, message) {
   function authenticateClientCallback(response) {
     response.on('data', function (chunk) {
       if (response.statusCode == 404) {
-        console.log('Backend authentication url not found, tried using these options: ');
-        console.log(options);
+        if (backendSettings.debug) {
+          console.log('Backend authentication url not found, tried using these options: ');
+          console.log(options);
+        }
+        else {
+          console.log('Backend authentication url not found.');
+        }
         return;
       }
       response.setEncoding('utf8');
