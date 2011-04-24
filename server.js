@@ -511,14 +511,14 @@ socket.on('connection', function(client) {
 
       // If this message is destined for a channel, check that writing to 
       // channels from client sockets is allowed.
-	  if (message.hasOwnProperty('channel')) {
+	    if (message.hasOwnProperty('channel')) {
         if (backenSettings.clientsCanWriteToChannels || channelIsClientWritable(message.channel)) {
           process.emit('client-message', client.sessionId, message);
         }
         else if (backendSettings.debug) {
-          console.log('Received unauthorised message from client ' + client.sessionId);
+          console.log('Received unauthorised message from client: cannot write to channel ' + client.sessionId);
         }
-	  }
+	    }
 
       // No channel, so this message is destined for one or more clients. Check
       // that this is allowed in the server configuration.
@@ -526,7 +526,7 @@ socket.on('connection', function(client) {
         process.emit('client-message', client.sessionId, message);
       }
       else if (backendSettings.debug) {
-        console.log('Received unauthorised message from client ' + client.sessionId);
+        console.log('Received unauthorised message from client: cannot write to client ' + client.sessionId);
       }
       return;
     }
