@@ -455,6 +455,11 @@ var removeUserFromChannel = function(request, response) {
  * Setup a socket.clients{}.connection with uid, channels etc.
  */
 var setupClientConnection = function(sessionId, authData) {
+  if (!socket.clients[sessionId]) {
+    console.log("Client socket '" + sessionId + "' went away.");
+    console.log(authData);
+    return;
+  }
   socket.clients[sessionId].authKey = authData.authKey;
   socket.clients[sessionId].uid = authData.uid;
   if (backendSettings.debug) {
