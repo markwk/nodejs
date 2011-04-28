@@ -73,7 +73,7 @@ Drupal.Nodejs.sendAuthMessage = function () {
   try {
     var authMessage = {
       type: 'authenticate',
-      authkey: Drupal.settings.nodejs.authkey
+      authToken: Drupal.settings.nodejs.authToken
     };
     Drupal.Nodejs.socket.send(authMessage);
     Drupal.Nodejs.runSetupHandlers('authSuccess');

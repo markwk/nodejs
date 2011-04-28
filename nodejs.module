@@ -389,7 +389,7 @@ function nodejs_get_config() {
     'host' => variable_get('nodejs_server_host', 'localhost'),
     'port' => variable_get('nodejs_server_port', '8080'),
     'resource' => '/node.js/realtime',
-    'authkey' => md5(session_id()),
+    'authToken' => md5(session_id()),
     'serviceKey' => '',
     'websocketSwfLocation' => base_path() . drupal_get_path('module', 'nodejs') . '/socket_io/socket.io/support/socket.io-client/lib/vendor/web-socket-js/WebSocketMain.swf',
   );
