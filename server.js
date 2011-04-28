@@ -204,11 +204,11 @@ var publishMessage = function (request, response) {
 var publishMessageToChannel = function (message) {
   if (!message.hasOwnProperty('channel')) {
     console.log('publishMessageToChannel: An invalid message object was provided.');
-	return 0;
+    return 0;
   }
   if (!socket.channels.hasOwnProperty(message.channel)) {
     console.log('publishMessageToChannel: The channel "' + message.channel + '" doesn\'t exist.');
-	return 0;
+    return 0;
   }
 
   var clientCount = 0;
@@ -521,14 +521,14 @@ socket.on('connection', function(client) {
 
       // If this message is destined for a channel, check that writing to 
       // channels from client sockets is allowed.
-	    if (message.hasOwnProperty('channel')) {
+      if (message.hasOwnProperty('channel')) {
         if (backenSettings.clientsCanWriteToChannels || channelIsClientWritable(message.channel)) {
           process.emit('client-message', client.sessionId, message);
         }
         else if (backendSettings.debug) {
           console.log('Received unauthorised message from client: cannot write to channel ' + client.sessionId);
         }
-	    }
+      }
 
       // No channel, so this message is destined for one or more clients. Check
       // that this is allowed in the server configuration.
