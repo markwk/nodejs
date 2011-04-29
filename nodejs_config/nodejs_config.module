@@ -179,7 +179,7 @@ function nodejs_config_form_submit($form, &$form_state) {
 
   $file_path = drupal_get_path('module', 'nodejs') . '/nodejs.config.js';
   if (!is_writable($file_path)) {
-    drupal_set_message(t('It was not possible to write the bellow lines to <b>!file</b>, you need to do it manually.', array('!file' => $file)));
+    drupal_set_message(t('It was not possible to write the bellow lines to <b>!file</b>, you need to do it manually.', array('!file' => $file_path)));
     drupal_set_message('<pre>' . $output . '</pre>');
   } 
   else {
