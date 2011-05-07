@@ -397,42 +397,42 @@ var addUserToChannel = function(request, response) {
 var addAuthTokenToChannel = function(request, response) {
   var authToken = request.params.authToken || '';
   var channel = request.params.channel || '';
-  if (authToken && channel) {
-    if (!/^[a-z0-9_]+$/i.test(channel)) {
-      console.log("Invalid channel: " + channel);
-      response.send({'status': 'failed', 'error': 'Invalid channel name.'});
-      return;
-    }
-    if (!socket.authenticatedClients[authToken]) {
-      console.log("Unknown authToken : " + authToken);
-      response.send({'status': 'failed', 'error': 'Invalid authToken.'});
-      return;
-    }
-    socket.channels[channel] = socket.channels[channel] || {'sessionIds': {}};
-    var sessionIds = getNodejsSessionIdsFromAuthtoken(authToken);
-    if (sessionIds.length > 0) {
-      for (var i in sessionIds) {
-        socket.channels[channel].sessionIds[sessionIds[i]] = sessionIds[i];
-      }
-      if (backendSettings.debug) {
-        console.log("Added sessionIds '" + sessionIds.join() + "' to channel '" + channel + "'");
-      }
-      response.send({'status': 'success'});
-    }
-    else {
-      console.log("No active sessions for authToken: " + authToken);
-      response.send({'status': 'failed', 'error': 'No active sessions for uid.'});
-    }
-    if (socket.authenticatedClients[authToken].channels.indexOf(channel) == -1) {
-      socket.authenticatedClients[authToken].channels.push(channel);
-      if (backendSettings.debug) {
-        console.log("Added channel '" + channel + "' to socket.authenticatedClients");
-      }
-    }
-  }
-  else {
+  if (!authToken || !channel) {
     console.log("Missing authToken or channel");
     response.send({'status': 'failed', 'error': 'Missing authToken or channel'});
+    return;
+  }
+
+  if (!/^[a-z0-9_]+$/i.test(channel)) {
+    console.log("Invalid channel: " + channel);
+    response.send({'status': 'failed', 'error': 'Invalid channel name.'});
+    return;
+  }
+  if (!socket.authenticatedClients[authToken]) {
+    console.log("Unknown authToken : " + authToken);
+    response.send({'status': 'failed', 'error': 'Invalid authToken.'});
+    return;
+  }
+  socket.channels[channel] = socket.channels[channel] || {'sessionIds': {}};
+  var sessionIds = getNodejsSessionIdsFromAuthtoken(authToken);
+  if (sessionIds.length > 0) {
+    for (var i in sessionIds) {
+      socket.channels[channel].sessionIds[sessionIds[i]] = sessionIds[i];
+    }
+    if (backendSettings.debug) {
+      console.log("Added sessionIds '" + sessionIds.join() + "' to channel '" + channel + "'");
+    }
+    response.send({'status': 'success'});
+  }
+  else {
+    console.log("No active sessions for authToken: " + authToken);
+    response.send({'status': 'failed', 'error': 'No active sessions for uid.'});
+  }
+  if (socket.authenticatedClients[authToken].channels.indexOf(channel) == -1) {
+    socket.authenticatedClients[authToken].channels.push(channel);
+    if (backendSettings.debug) {
+      console.log("Added channel '" + channel + "' to socket.authenticatedClients");
+    }
   }
 };
 
@@ -635,7 +635,6 @@ server.all('/nodejs/*', checkServiceKeyCallback)
 var socket = io.listen(server, {port: backendSettings.port, resource: backendSettings.resource});
 socket.channels = {};
 socket.authenticatedClients = {};
-socket.statistics = {};
 
 socket.on('connection', function(client) {
   process.emit('client-connection', client.sessionId);
@@ -701,7 +700,7 @@ socket.on('connection', function(client) {
 /**
  * Invokes the specified function on all registered server extensions.
  */
-function invokeExtensions(hook) {
+var invokeExtensions = function (hook) {
   var args = arguments.length ? Array.prototype.slice.call(arguments, 1) : [];
   for (var i in extensions) {
     if (extensions[i].hasOwnProperty(hook) && extensions[i][hook].apply) {
@@ -718,7 +717,9 @@ function invokeExtensions(hook) {
 var extensionsConfig = {
   'publishMessageToChannel': publishMessageToChannel,
   'publishMessageToClient': publishMessageToClient,
-  'addClientToChannel': addClientToChannel
+  'addClientToChannel': addClientToChannel,
+  'backendSettings': backendSettings,
+  'socket': socket
 };
 invokeExtensions('setup', extensionsConfig);
 
