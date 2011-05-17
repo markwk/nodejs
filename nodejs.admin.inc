@@ -38,4 +38,3 @@ function nodejs_settings() {
 
   return system_settings_form($form);
 }
-

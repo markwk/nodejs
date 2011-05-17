@@ -1,0 +1,52 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ */
+function nodejs4d6_subscribe_schema() {
+  return array(
+    'nodejs4d6_subscribe_subscription' => array(
+      'description' => 'Stores user subscriptions to nodes.',
+      'fields' => array(
+        'nid' => array(
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'uid' => array(
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+      ),
+      'unique keys' => array(
+        'name' => array('nid', 'uid'),
+      ),
+    ),
+    'nodejs4d6_subscribe_node' => array(
+      'description' => 'Stores per-node settings related to subscriptions.',
+      'fields' => array(
+        'nid' => array(
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'subscribe' => array(
+          'description' => 'Defines whether the node can be subscribed to (1) or not (0).',
+          'type' => 'int',
+          'unsigned' => TRUE,
+        ),
+      ),
+      'primary key' => array('nid'),
+    ),
+  );
+}
+
+/**
+ * Create the {nodejs4d6_subscribe_node} table.
+ */
+function nodejs4d6_subscribe_update_7000() {
+  $schema = nodejs4d6_subscribe_schema();
+  $ret = "";
+  db_create_table(&$ret, 'nodejs4d6_subscribe_node', $schema['nodejs4d6_subscribe_node']);
+}

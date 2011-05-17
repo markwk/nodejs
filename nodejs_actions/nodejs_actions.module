@@ -1,15 +1,63 @@
 <?php
 
 /**
- * Implements hook_action_info().
+ * Implementation of hook_action_info().
  */
 function nodejs_actions_action_info() {
+  return array(
+    'realtime_comment_publish_action' => array(
+      'description' => t('Publish realtime notifications Publish comment'),
+      'type' => 'comment',
+      'configurable' => FALSE,
+      'hooks' => array(
+        'comment' => array('insert', 'update'),
+      ),
+    ),
+    'realtime_comment_unpublish_action' => array(
+      'description' => t('Publish realtime notifications Unpublish comment'),
+      'type' => 'comment',
+      'configurable' => FALSE,
+      'hooks' => array(
+        'comment' => array('insert', 'update'),
+      )
+    ),
+    'realtime_comment_unpublish_by_keyword_action' => array(
+      'description' => t('Publish realtime notifications Unpublish comment containing keyword(s)'),
+      'type' => 'comment',
+      'configurable' => TRUE,
+      'hooks' => array(
+        'comment' => array('insert', 'update'),
+      )
+    )
+  );
+}
+
+
+function realtime_comment_publish_action($comment, $context = array()) {
+  if (isset($comment->cid)) {
+    $cid = $comment->cid;
+    $subject = $comment->subject;
+  }
+  else {
+    $cid = $context['cid'];
+    $subject = db_result(db_query("SELECT subject FROM {comments} WHERE cid = %d", $cid));
+  }
+  db_query('UPDATE {comments} SET status = %d WHERE cid = %d', COMMENT_PUBLISHED, $cid);
+  watchdog('action', 'Published comment %subject.', array('%subject' => $subject));
+}
+
+/**
+ * Implements hook_action_info().
+ */
+/*function nodejs_actions_action_info() {
   $actions = array();
 
-  $triggers = module_invoke_all('trigger_info');
+  //  $triggers = module_invoke_all('trigger_info');
+  //$triggers = _nodejs_trigger_info();
+  //var_dump($triggers);
   drupal_alter('trigger_info', $triggers);
 
-  foreach (array('node', 'user', 'comment') as $type) {
+  foreach (array('comment') as $type) {
     $actions['nodejs_actions_' . $type . '_action'] = array(
       'type' => $type,
       'triggers' => array_keys($triggers[$type]),
@@ -19,6 +67,7 @@ function nodejs_actions_action_info() {
   }
   return $actions;
 }
+*/
 
 /**
  * Try to get the action for the given trigger context.

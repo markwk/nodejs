@@ -2,6 +2,12 @@ name = Nodejs subscribe
 description = Adds realtime notifications for subscribed content.
 package = Nodejs
 version = VERSION
-core = 7.x
+core = 6.x
 dependencies[] = nodejs
+
+
+; Information added by drupal.org packaging script on 2011-05-17
+version = "6.x-1.0-alpha1"
+core = "6.x"
+project = "nodejs"
 

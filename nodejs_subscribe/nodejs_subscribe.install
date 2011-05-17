@@ -47,5 +47,6 @@ function nodejs_subscribe_schema() {
  */
 function nodejs_subscribe_update_7000() {
   $schema = nodejs_subscribe_schema();
-  db_create_table('nodejs_subscribe_node', $schema['nodejs_subscribe_node']);
+  $ret = "";
+  db_create_table(&$ret, 'nodejs_subscribe_node', $schema['nodejs_subscribe_node']);
 }
