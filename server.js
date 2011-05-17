@@ -16,7 +16,7 @@ var http = require('http'),
     vm = require('vm');
 
 try {
-  var backendSettings = vm.runInThisContext(fs.readFileSync(__dirname + '/nodejs4d6.config.js'));
+  var backendSettings = vm.runInThisContext(fs.readFileSync(__dirname + '/nodejs.config.js'));
   backendSettings.serverStatsUrl = '/nodejs/stats/server';
   backendSettings.getActiveChannelsUrl = '/nodejs/stats/channels';
   backendSettings.kickUserUrl = '/nodejs/user/kick/:uid';
