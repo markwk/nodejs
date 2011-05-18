@@ -81,7 +81,7 @@ function nodejs_init() {
     //drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', 'module', 'footer', FALSE, TRUE);
     drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', 'file', 'footer');
     drupal_add_js(drupal_get_path('module', 'nodejs_notify') . '/nodejs_notify.js', 'file', 'footer');
-    drupal_add_js(drupal_get_path('module', 'nodejs_ajax') . '/nodejs_ajax.js', 'file', 'footer');
+    drupal_add_js(drupal_get_path('module', 'nodejs_ajax') . '/nodejs_ajax.js', 'file', 'header');
     //drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js');
     //drupal_add_js(array('nodejs' => $nodejs_config));
     if (isset($nodejs_config)) {
@@ -89,7 +89,7 @@ function nodejs_init() {
 			drupal_add_js(array('nodejs' => array($key => $value)), 'setting');
 		}
 	}
-    drupal_add_js(nodejs_get_url(nodejs_get_config(), 'inline'));
+//    drupal_add_js(nodejs_get_url(nodejs_get_config(), 'inline'));
 	  foreach (nodejs_get_js_handlers() as $handler_file) {
     drupal_add_js($handler_file, 'file', 'footer', FALSE, TRUE);
     }

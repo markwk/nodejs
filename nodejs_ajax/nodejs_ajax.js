@@ -6,6 +6,7 @@
   element_settings.url = '';
 
   var element = $('');
+
   Drupal.nodejs_ajax = new Drupal.ajax('nodejs_ajax', element, element_settings);
 
   Drupal.Nodejs.callbacks.nodejsNodeAjaxBroadcast = {
