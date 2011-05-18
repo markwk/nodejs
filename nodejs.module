@@ -71,6 +71,8 @@ function nodejs_theme($existing, $type, $theme, $path) {
 function nodejs_init() {
   _node_js_drupal_register_shutdown_function(array('nodejs', 'sendMessages'));
   $_SESSION['nodejs_config'] = $nodejs_config = nodejs_get_config();
+  /*var_dump($nodejs_config);
+  exit();*/
   if (isset($nodejs_config['serviceKey'])) {
     unset($nodejs_config['serviceKey']);
   }
@@ -82,6 +84,11 @@ function nodejs_init() {
     drupal_add_js(drupal_get_path('module', 'nodejs_ajax') . '/nodejs_ajax.js', 'file', 'footer');
     //drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js');
     //drupal_add_js(array('nodejs' => $nodejs_config));
+    if (isset($nodejs_config)) {
+		foreach ($nodejs_config as $key => $value) {
+			drupal_add_js(array('nodejs' => array($key => $value)), 'setting');
+		}
+	}
     drupal_add_js(nodejs_get_url(nodejs_get_config(), 'inline'));
 	  foreach (nodejs_get_js_handlers() as $handler_file) {
     drupal_add_js($handler_file, 'file', 'footer', FALSE, TRUE);
