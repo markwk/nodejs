@@ -74,14 +74,14 @@ function nodejs_init() {
   if (isset($nodejs_config['serviceKey'])) {
     unset($nodejs_config['serviceKey']);
   }
-    drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/support/socket.io-client/socket.io.js', 'module', 'footer', FALSE, TRUE);
-  //  drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/support/socket.io-client/socket.io.js', array('type' => 'file'));
-  //drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', 'module', 'footer', FALSE, TRUE);
-  //  drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', array('type' => 'file'));
-  //drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js');
-  //  drupal_add_js(array('nodejs' => $nodejs_config));
-  //  drupal_add_js(array('nodejs' => $nodejs_config), array('type' => 'setting'));
-  foreach (nodejs_get_js_handlers() as $handler_file) {
+  drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/support/socket.io-client/socket.io.js', 'file', 'footer');
+    //drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/support/socket.io-client/socket.io.js', array('type' => 'file'));
+    //drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', 'module', 'footer', FALSE, TRUE);
+    drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', 'file', 'footer');
+    //drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js');
+    //drupal_add_js(array('nodejs' => $nodejs_config));
+    drupal_add_js(nodejs_get_url(nodejs_get_config(), 'inline'));
+	  foreach (nodejs_get_js_handlers() as $handler_file) {
     drupal_add_js($handler_file, 'file', 'footer', FALSE, TRUE);
     }
 }
