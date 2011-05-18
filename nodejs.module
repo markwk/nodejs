@@ -76,12 +76,12 @@ function nodejs_init() {
   if (isset($nodejs_config['serviceKey'])) {
     unset($nodejs_config['serviceKey']);
   }
-    drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/support/socket.io-client/socket.io.js', 'file', 'footer');
+    drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/support/socket.io-client/socket.io.js', 'module', 'footer');
     //drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/support/socket.io-client/socket.io.js', array('type' => 'file'));
     //drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', 'module', 'footer', FALSE, TRUE);
-    drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', 'file', 'footer');
-    drupal_add_js(drupal_get_path('module', 'nodejs_notify') . '/nodejs_notify.js', 'file', 'footer');
-    drupal_add_js(drupal_get_path('module', 'nodejs_ajax') . '/nodejs_ajax.js', 'file', 'header');
+    drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', 'module', 'footer');
+    drupal_add_js(drupal_get_path('module', 'nodejs_notify') . '/nodejs_notify.js', 'module', 'footer');
+    drupal_add_js(drupal_get_path('module', 'nodejs_ajax') . '/nodejs_ajax.js', 'module', 'header');
     //drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js');
     //drupal_add_js(array('nodejs' => $nodejs_config));
     if (isset($nodejs_config)) {
