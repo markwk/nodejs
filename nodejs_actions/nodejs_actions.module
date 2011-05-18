@@ -8,7 +8,7 @@ function nodejs_actions_action_info() {
     'realtime_comment_publish_action' => array(
       'description' => t('Publish realtime notifications Publish comment'),
       'type' => 'comment',
-      'configurable' => FALSE,
+      'configurable' => TRUE,
       'hooks' => array(
         'comment' => array('insert', 'update'),
       ),
@@ -16,7 +16,7 @@ function nodejs_actions_action_info() {
     'realtime_comment_unpublish_action' => array(
       'description' => t('Publish realtime notifications Unpublish comment'),
       'type' => 'comment',
-      'configurable' => FALSE,
+      'configurable' => TRUE,
       'hooks' => array(
         'comment' => array('insert', 'update'),
       )
