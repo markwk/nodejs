@@ -24,7 +24,7 @@ function nodejs_actions_action_info() {
     'realtime_comment_unpublish_by_keyword_action' => array(
       'description' => t('Publish realtime notifications Unpublish comment containing keyword(s)'),
       'type' => 'comment',
-      'configurable' => TRUE,
+      'configurable' => FALSE,
       'hooks' => array(
         'comment' => array('insert', 'update'),
       )

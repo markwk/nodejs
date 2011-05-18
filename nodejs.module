@@ -78,6 +78,8 @@ function nodejs_init() {
     //drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/support/socket.io-client/socket.io.js', array('type' => 'file'));
     //drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', 'module', 'footer', FALSE, TRUE);
     drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', 'file', 'footer');
+    drupal_add_js(drupal_get_path('module', 'nodejs_notify') . '/nodejs_notify.js', 'file', 'footer');
+    drupal_add_js(drupal_get_path('module', 'nodejs_ajax') . '/nodejs_ajax.js', 'file', 'footer');
     //drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js');
     //drupal_add_js(array('nodejs' => $nodejs_config));
     drupal_add_js(nodejs_get_url(nodejs_get_config(), 'inline'));
