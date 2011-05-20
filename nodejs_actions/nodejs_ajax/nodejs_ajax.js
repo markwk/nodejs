@@ -7,7 +7,7 @@
 
   var element = $('');
   Drupal.nodejs_ajax = new Drupal.ajax('nodejs_ajax', element, element_settings);
-
+  Drupal.Nodejs = Drupal.Nodejs || {'callbacks': {}, 'socket': false};
   Drupal.Nodejs.callbacks.nodejsNodeAjaxBroadcast = {
     callback: function (message) {
       switch (message.channel) {

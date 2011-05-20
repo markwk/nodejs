@@ -22,7 +22,7 @@ function nodejs_config_menu() {
  * @param mixed $form_state 
  * @return array
  */
-function nodejs_config_form($form, &$form_state) {
+function nodejs_config_form($form_state) {
   $form['config'] = array(
     '#type' => 'fieldset',
     '#title' => 'Settings',
@@ -174,7 +174,7 @@ function nodejs_config_form_submit($form, &$form_state) {
     'extensions' => array($ext),
     'debug' => (bool) $values['nodejs_config_debug'],
   );
-  $output = 'backendSettings = ' . drupal_json_encode($array);
+  $output = 'backendSettings = ' . nodejs_config_json_encode($array);
   $output = str_replace(array('= {', ',', '}}', ':{', '\/'), array("= {\n  ", ",\n  ", "\n  }\n}", ":{\n  ",  '/'), $output);
 
   $file_path = drupal_get_path('module', 'nodejs') . '/nodejs.config.js';
@@ -187,3 +187,7 @@ function nodejs_config_form_submit($form, &$form_state) {
   }
 }
 
+function nodejs_config_json_encode($var) {
+  // json_encode() does not escape <, > and &, so we do it with str_replace().
+  return str_replace(array('<', '>', '&'), array('\u003c', '\u003e', '\u0026'), json_encode($var));
+}
