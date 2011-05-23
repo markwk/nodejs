@@ -187,7 +187,15 @@ function nodejs_config_form_submit($form, &$form_state) {
   }
 }
 
+/**
+ * Wrapper function for json_encode().
+ * 
+ * json_encode() does not escape <, > and &, so we do it with str_replace().
+ *
+ * @param mixed $var
+ * @return string
+ */
 function nodejs_config_json_encode($var) {
-  // json_encode() does not escape <, > and &, so we do it with str_replace().
   return str_replace(array('<', '>', '&'), array('\u003c', '\u003e', '\u0026'), json_encode($var));
 }
+
