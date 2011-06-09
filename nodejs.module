@@ -158,16 +158,12 @@ function nodejs_menu() {
 }
 
 /**
- * Implements hook_permission().
+ * Implements hook_perm().
  */
-function nodejs_permission() {
-  return array(
-    'access node.js server stats' => array(
-      'title' => t('Access node.js server statistics'),
-      'description' => t('Access the statistics page for the node.js server.'),
-    ),
-  );
-}
+function nodejs_perm() {
+  return array('access node.js server stats');
+ }
+
 
 /**
  * Get a list of active channels from the node.js server.
