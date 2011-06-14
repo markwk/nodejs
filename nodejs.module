@@ -35,6 +35,21 @@ function nodejs_broadcast_message($subject, $body) {
 }
 
 /**
+ * Send a message to all users subscribed to a given channel.
+ */
+function nodejs_send_channel_message($channel, $subject, $body) {
+  $message = (object) array(
+    'broadcast' => FALSE,
+    'data' => (object) array(
+      'subject' => $subject,
+      'body' => $body,
+    ),
+    'channel' => $channel,
+  );
+  nodejs_enqueue_message($message);
+}
+
+/**
  * Send a message to given user.
  * 
  * @param int $uid
