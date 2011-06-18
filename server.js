@@ -602,7 +602,7 @@ var setupClientConnection = function(sessionId, authData) {
     socket.channels[authData.channels[i]].sessionIds[sessionId] = sessionId;
   }
   socket.clients[sessionId].send({'status': 'authenticated'});
-  process.emit('client-authenticated', sessionId);
+  process.emit('client-authenticated', sessionId, authData);
 };
 
 var server;

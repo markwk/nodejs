@@ -17,8 +17,8 @@ exports.setup = function (config) {
     console.log('Example extension got connection event for session ' + sessionId);
     publishMessageToClient(sessionId, {data: {subject: 'Example extension', body: 'Hello, you just connected.'}});
   })
-  .on('client-authenticated', function (sessionId) {
-    console.log('Example extension got authenticated event for session ' + sessionId);
+  .on('client-authenticated', function (sessionId, authData) {
+    console.log('Example extension got authenticated event for session ' + sessionId + ' (user ' + authData.uid + ')');
     publishMessageToClient(sessionId, {data: {subject: 'Example extension', body: 'Welcome, you are authenticated.'}});
   })
   .on('client-message', function (sessionId, message) {
