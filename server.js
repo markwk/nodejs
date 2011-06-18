@@ -621,16 +621,16 @@ else {
   }
   server = express.createServer();
 }
-server.all('/nodejs/*', checkServiceKeyCallback)
-  .post(backendSettings.publishUrl, publishMessage)
-  .get(backendSettings.serverStatsUrl, returnServerStats)
-  .get(backendSettings.getActiveChannelsUrl, getActiveChannels)
-  .get(backendSettings.kickUserUrl, kickUser)
-  .get(backendSettings.addUserToChannelUrl, addUserToChannel)
-  .get(backendSettings.removeUserFromChannelUrl, removeUserFromChannel)
-  .get(backendSettings.toggleDebugUrl, toggleDebug)
-  .get('*', send404)
-  .listen(backendSettings.port, backendSettings.host);
+server.all('/nodejs/*', checkServiceKeyCallback);
+server.post(backendSettings.publishUrl, publishMessage);
+server.get(backendSettings.serverStatsUrl, returnServerStats);
+server.get(backendSettings.getActiveChannelsUrl, getActiveChannels);
+server.get(backendSettings.kickUserUrl, kickUser);
+server.get(backendSettings.addUserToChannelUrl, addUserToChannel);
+server.get(backendSettings.removeUserFromChannelUrl, removeUserFromChannel);
+server.get(backendSettings.toggleDebugUrl, toggleDebug);
+server.get('*', send404);
+server.listen(backendSettings.port, backendSettings.host);
 
 var socket = io.listen(server, {port: backendSettings.port, resource: backendSettings.resource});
 socket.channels = {};
