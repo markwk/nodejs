@@ -1,0 +1,6 @@
+name = Nodejs Watchdog
+description = Adds watchdog messages to the dblog page in realtime.
+package = Nodejs
+version = VERSION
+core = 7.x
+dependencies[] = nodejs

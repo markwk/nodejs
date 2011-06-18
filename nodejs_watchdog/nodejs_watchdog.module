@@ -1,0 +1,86 @@
+<?php
+
+function nodejs_watchdog_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'dblog_filter_form') {
+    drupal_add_js(drupal_get_path('module', 'nodejs_watchdog') . '/nodejs.watchdog.js', array('type' => 'file'));
+  }
+}
+
+function nodejs_watchdog_watchdog(array $entry) {
+  $classes = array(
+    WATCHDOG_DEBUG     => 'dblog-debug',
+    WATCHDOG_INFO      => 'dblog-info',
+    WATCHDOG_NOTICE    => 'dblog-notice',
+    WATCHDOG_WARNING   => 'dblog-warning',
+    WATCHDOG_ERROR     => 'dblog-error',
+    WATCHDOG_CRITICAL  => 'dblog-critical',
+    WATCHDOG_ALERT     => 'dblog-alert',
+    WATCHDOG_EMERGENCY => 'dblog-emerg',
+  );
+
+  $entry['variables'] = isset($entry['variables']) ? serialize($entry['variables']) : serialize(array());
+
+  $row = array('data' =>
+    array(
+      // Cells
+      array('class' => 'icon'),
+      t($entry['type']),
+      format_date($entry['timestamp'], 'short'),
+      theme('dblog_message', array('event' => (object)$entry, 'link' => TRUE)),
+      theme('username', array('account' => $entry)),
+      $entry['link'],
+    ),
+    // Attributes for tr
+    'class' => array(drupal_html_class('dblog-' . $entry['type']), $classes[$entry['severity']]),
+  );
+
+  $commands = array();
+  $commands[] = ajax_command_before('#admin-dblog tr:eq(1)', nodejs_watchdog_theme_row($row));
+  $options = array(
+    'broadcast' => TRUE,
+    'uid' => 1,
+  );
+
+  $message = (object) array(
+    'broadcast' => TRUE,
+    'commands' => $commands,
+  );
+
+  //  nodejs_ajax_render($commands, $options);
+  nodejs_enqueue_message($message);
+}
+
+function nodejs_watchdog_theme_row($row) {
+  $attributes = array();
+  $flip = array(
+    'even' => 'odd',
+    'odd' => 'even',
+  );
+
+  $class = 'even';
+  $output = "";
+  // Check if we're dealing with a simple or complex row
+  if (isset($row['data'])) {
+    foreach ($row as $key => $value) {
+      if ($key == 'data') {
+        $cells = $value;
+      }
+      else {
+        $attributes[$key] = $value;
+      }
+    }
+  }
+  else {
+    $cells = $row;
+  }
+  if (count($cells)) {
+    // Build row
+    $output .= ' <tr' . drupal_attributes($attributes) . '>';
+    $i = 0;
+    foreach ($cells as $cell) {
+      $output .= _theme_table_cell($cell);
+    }
+    $output .= " </tr>\n";
+  }
+  return $output;
+}

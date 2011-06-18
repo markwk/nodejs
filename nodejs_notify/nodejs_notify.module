@@ -75,7 +75,6 @@ function nodejs_notify_settings_form() {
     '#type' => 'fieldset',
     '#title' => t('Node.js Notify Settings'),
   );
-  
   $form['settings']['notification_lifetime'] = array(
     '#type' => 'textfield',
     '#title' => 'Notification Lifetime',
@@ -83,13 +82,11 @@ function nodejs_notify_settings_form() {
     '#default_value' => variable_get('nodejs_notify_notification_lifetime_seconds', 3) ,
     '#required' => TRUE,
   );
-
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => 'Submit Configuration',
     '#submit' => array('nodejs_notify_settings_form_submit'),
   );
-
   return $form;
 }
 
@@ -118,25 +115,21 @@ function nodejs_notify_broadcast_form() {
     '#type' => 'fieldset',
     '#title' => 'System-wide Broadcast Notification',
   );
-  
   $form['broadcast_form']['broadcast_subject'] = array(
     '#type' => 'textfield',
     '#title' => 'Broadcast notification subject',
     '#required' => TRUE,
   );
-  
   $form['broadcast_form']['broadcast_message'] = array(
     '#type' => 'textarea',
     '#title' => 'Broadcast notification message',
     '#required' => TRUE,
   );
-  
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => 'Broadcast',
     '#submit' => array('nodejs_notify_broadcast_form_submit'),
   );
-  
   return $form;
 }
 
@@ -144,7 +137,7 @@ function nodejs_notify_broadcast_form() {
  * The submit handler for the form, after validated.
  */
 function nodejs_notify_broadcast_form_submit(&$form, &$form_state) {
-  nodejs_broadcast_message($form_state['values']['broadcast_subject'],$form_state['values']['broadcast_message']);
-  
+  nodejs_broadcast_message($form_state['values']['broadcast_subject'], $form_state['values']['broadcast_message']);
   drupal_set_message(t("Message broadcast to all users"));
 }
+
