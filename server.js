@@ -607,18 +607,12 @@ var setupClientConnection = function(sessionId, authData) {
 
 var server;
 if (backendSettings.scheme == 'https') {
-  if (backendSettings.debug) {
-    console.log('Starting https server.');
-  }
   server = express.createServer({
     key: fs.readFileSync(backendSettings.key),
     cert: fs.readFileSync(backendSettings.cert)
   });
 }
 else {
-  if (backendSettings.debug) {
-    console.log('Starting http server.');
-  }
   server = express.createServer();
 }
 server.all('/nodejs/*', checkServiceKeyCallback);
@@ -631,6 +625,7 @@ server.get(backendSettings.removeUserFromChannelUrl, removeUserFromChannel);
 server.get(backendSettings.toggleDebugUrl, toggleDebug);
 server.get('*', send404);
 server.listen(backendSettings.port, backendSettings.host);
+console.log('Started ' + backendSettings.scheme + ' server.');
 
 var socket = io.listen(server, {port: backendSettings.port, resource: backendSettings.resource});
 socket.channels = {};
