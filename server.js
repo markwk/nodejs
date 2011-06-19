@@ -58,6 +58,58 @@ var onlineUsers = {};
  */
 var buddyLists = {};
 
+/**
+ * Socket lifetime, token-identified channels.
+ *
+ * There are use cases where we want to send messages that update some content,
+ * but only to those users currently viewing that content. The following 
+ * summarises how we might implement that:
+ *
+ * 1. Drupal sends a strong token and a channel name to node.js. The token is
+ *    used as an auth identifier, allowing a client connection that presents
+ *    it to node.js access to the channel associated with the token.
+ *
+ * tokenChannels[channelName] = tokenChannels[channelName] || {};
+ * tokenChannels[channelName][token] = false;
+ *
+ * 2. When a client connects with a channel token, server.js adds that client's
+ *    socket sessionId to that channel, replacing false above.
+ *
+ * if (tokenChannels[channelName][clientToken] != undefined) {
+ *   tokenChannels[channelName][clientToken] = sessionId;
+ * }
+ *
+ * 3. When messages are sent to the channel, any sessionIds for non-existent
+ *    sockets are garbage collected.
+ *
+ * for (var token in tokenChannels[channelName]) {
+ *   if (socket.clients[tokenChannels[channelName][token]]) {
+ *     socket.clients[tokenChannels[channelName][token]].send(message);
+ *   }
+ *   else if (tokenChannels[channelName][token]) {
+ *     delete tokenChannels[channelName][token];
+ *   }
+ * }
+ *
+ * 4. Modules wishing to use this API need to:
+ *    a) generate a strong token and channel name pair, and send it as a 
+ *       message to node.js for each http request from a client who is to see
+ *       updates to the channel (we should probably have an API function in 
+ *       nodejs.module for this)
+ *    b) implement the client-side js to handle updates to the DOM in response
+ *       to messages sent to the channel from a)
+ *    c) send messages to node.js when the content the care about is changed
+ *
+ * The newly added nodejs_watchdog module is the first obvious example of a 
+ * module that can use this functionality.
+ */
+
+/**
+ * Stores a list of channels that are only created when associated with an
+ * identifying, short lived token.
+ */
+var tokenChannels = {};
+
 try {
   var backendSettings = vm.runInThisContext(fs.readFileSync(process.cwd() + '/nodejs.config.js'));
 }
