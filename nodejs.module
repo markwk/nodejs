@@ -93,9 +93,9 @@ function nodejs_send_user_message_multiple($uids, $subject, $body) {
  * @param string $body
  */
 function nodejs_send_role_message($role_name, $subject, $body) {
-  $query  = db_select('users', 'u');
-  $query->join('users_roles','ur','ur.uid = u.uid');
-  $query->join('role','r','ur.rid = r.rid');
+  $query = db_select('users', 'u');
+  $query->join('users_roles', 'ur', 'ur.uid = u.uid');
+  $query->join('role', 'r', 'ur.rid = r.rid');
   $uids = $query->fields('u',array('uid'))
             ->condition('r.name', $role_name)
             ->execute()
@@ -112,7 +112,7 @@ function nodejs_init() {
   if (isset($nodejs_config['serviceKey'])) {
     unset($nodejs_config['serviceKey']);
   }
-  drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/socket.io/support/socket.io-client/socket.io.js', array('type' => 'file'));
+  drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/socket.io/node_modules/socket.io-client/dist/socket.io.js', array('type' => 'file'));
   drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', array('type' => 'file'));
   drupal_add_js(array('nodejs' => $nodejs_config), array('type' => 'setting'));
   foreach (nodejs_get_js_handlers() as $handler_file) {

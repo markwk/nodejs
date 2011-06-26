@@ -33,16 +33,11 @@ Drupal.Nodejs.runCallbacks = function (message) {
   }
 };
 
-Drupal.Nodejs.runSetupHandlers = function (type, error) {
+Drupal.Nodejs.runSetupHandlers = function (type) {
   $.each(Drupal.Nodejs.connectionSetupHandlers, function () {
     if ($.isFunction(this[type])) {
       try {
-        if (typeof(error) == 'undefined') {
-          this[type]();
-        }
-        else {
-          this[type](error);
-        }
+        this[type]();
       }
       catch (exception) {}
     }
@@ -50,40 +45,32 @@ Drupal.Nodejs.runSetupHandlers = function (type, error) {
 };
 
 Drupal.Nodejs.connect = function () {
-  try {
-    var socketSettings = {
-      secure: Drupal.settings.nodejs.secure, 
-      port: Drupal.settings.nodejs.port, 
-      resource: Drupal.settings.nodejs.resource
-    }
-    Drupal.Nodejs.socket = new io.Socket(Drupal.settings.nodejs.host, socketSettings);
-    Drupal.Nodejs.socket.connect();
-    Drupal.Nodejs.runSetupHandlers('connectionSuccess');
+  var scheme = Drupal.settings.nodejs.secure ? 'https' : 'http',
+      url = scheme + '://' + Drupal.settings.nodejs.host + ':' + Drupal.settings.nodejs.port;
+  Drupal.settings.nodejs.connectTimeout = Drupal.settings.nodejs.connectTimeout || 5000;
+  Drupal.Nodejs.socket = io.connect(url, {'connect timeout': Drupal.settings.nodejs.connectTimeout});
+  Drupal.Nodejs.socket.on('connect', function() {
+    Drupal.Nodejs.sendAuthMessage();
+    Drupal.Nodejs.runSetupHandlers('connect');
     Drupal.Nodejs.socket.on('message', Drupal.Nodejs.runCallbacks);
-    return true;
-  }
-  catch (exception) {
-    Drupal.Nodejs.socket = false;
-    Drupal.Nodejs.runSetupHandlers('connectionFailure', exception);
-    return false;
+  });
+  Drupal.Nodejs.socket.on('disconnect', function() {
+    Drupal.Nodejs.runSetupHandlers('disconnect');
+  });
+  setTimeout("Drupal.Nodejs.checkConnection()", Drupal.settings.nodejs.connectTimeout + 250);
+};
+
+Drupal.Nodejs.checkConnection = function () {
+  if (!Drupal.Nodejs.socket.socket.connected) {
+    Drupal.Nodejs.runSetupHandlers('connectionFailure');
   }
 };
 
 Drupal.Nodejs.sendAuthMessage = function () {
-  try {
-    var authMessage = {
-      type: 'authenticate',
-      authToken: Drupal.settings.nodejs.authToken
-    };
-    Drupal.Nodejs.socket.send(authMessage);
-    Drupal.Nodejs.runSetupHandlers('authSuccess');
-    return true;
-  }
-  catch (exception) {
-    Drupal.Nodejs.socket = false;
-    Drupal.Nodejs.runSetupHandlers('authFailure', exception);
-    return false;
-  }
+  var authMessage = {
+    authToken: Drupal.settings.nodejs.authToken
+  };
+  Drupal.Nodejs.socket.emit('authenticate', authMessage);
 };
 
 })(jQuery);
