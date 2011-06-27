@@ -382,7 +382,15 @@ function nodejs_auth_check($auth_key) {
   $auth_user->nodejs_valid_auth_key = $uid !== FALSE;
 
   if ($auth_user->nodejs_valid_auth_key) {
+    // Get the list of channels I have access to.
     $auth_user->channels = module_invoke_all('nodejs_user_channels', $auth_user);
+
+    // Get the list of users who are my buddies.
+    $auth_user->buddies = module_invoke_all('nodejs_user_buddies', $auth_user);
+
+    // Get the list of users who can see presence notifications about me.
+    $auth_user->presenceUids = module_invoke_all('nodejs_user_presence_list', $auth_user);
+
     $nodejs_config = nodejs_get_config(); 
     $auth_user->serviceKey = $nodejs_config['serviceKey'];
     drupal_add_http_header('NodejsServiceKey', $nodejs_config['serviceKey']);
