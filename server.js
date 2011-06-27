@@ -19,6 +19,7 @@ var channels = {},
     authenticatedClients = {},
     onlineUsers = {},
     buddyLists = {},
+    presenceTimeoutIds = {},
     tokenChannels = {};
 
 /**
@@ -153,10 +154,10 @@ var channelIsClientWritable = function (channel) {
  * Authenticate a client connection based on the message it sent.
  */
 var authenticateClient = function (client, message) {
-  // If the authToken that is verified, initiate a connection with the client.
+  // If the authToken is verified, initiate a connection with the client.
   if (authenticatedClients[message.authToken]) {
     if (backendSettings.debug) {
-      console.log('Reusing existing authentication data for key "' + message.authToken + '":' + client.id);
+      console.log('Reusing existing authentication data for key:', message.authToken, ', client id:', client.id);
     }
     setupClientConnection(client.id, authenticatedClients[message.authToken]);
     return;
@@ -209,6 +210,7 @@ var authenticateClient = function (client, message) {
         }
         authenticatedClients[message.authToken] = authData;
         setupClientConnection(client.id, authData);
+        sendPresenceChangeNotification(authData.uid, 'online');
       }
       else {
         console.log('Invalid login for uid "' + authData.uid + '"');
@@ -218,6 +220,23 @@ var authenticateClient = function (client, message) {
   }
   function authenticateErrorCallback(exception) {
     console.log("Error hitting backend with authentication token: " + exception);
+  }
+}
+
+/**
+ * Send a presence notifcation for uid.
+ */
+var sendPresenceChangeNotification = function (uid, presenceEvent) {
+  if (onlineUsers[uid]) {
+    for (var i in onlineUsers[uid]) {
+      if (backendSettings.debug) {
+        console.log('Sending presence notification for', uid, 'to', onlineUsers[uid][i]);
+      }
+      var sessionIds = getNodejsSessionIdsFromUid(onlineUsers[uid][i]);
+      for (var j in sessionIds) {
+        io.sockets.socket(sessionIds[j]).json.send({'presenceNotification': {'uid': uid, 'event': presenceEvent}});
+      }
+    }
   }
 }
 
@@ -336,14 +355,14 @@ var publishMessageToClient = function (sessionId, message) {
 /**
  * Sends a 404 message.
  */
-var send404 = function(request, response) {
+var send404 = function (request, response) {
   response.send('Not Found.', 404);
 };
 
 /**
  * Kicks the given logged in user from the server.
  */
-var kickUser = function(request, response) {
+var kickUser = function (request, response) {
   if (request.params.uid) {
     // Delete the user from the authenticatedClients hash.
     for (var authToken in authenticatedClients) {
@@ -374,7 +393,7 @@ var kickUser = function(request, response) {
 /**
  * Return a list of active channels.
  */
-var getActiveChannels = function(request, response) {
+var getActiveChannels = function (request, response) {
   var channels = {};
   for (var channel in channels) {
     channels[channel] = channel;
@@ -388,7 +407,7 @@ var getActiveChannels = function(request, response) {
 /**
  * Return summary info about the server.
  */
-var returnServerStats = function(request, response) {
+var returnServerStats = function (request, response) {
   var channels = [], clients = [];
   for (var channel in channels) {
     channels.push(channel);
@@ -410,7 +429,7 @@ var returnServerStats = function(request, response) {
 /**
  * Get the list of Node.js sessionIds for a given uid.
  */
-var getNodejsSessionIdsFromUid = function(uid) {
+var getNodejsSessionIdsFromUid = function (uid) {
   var sessionIds = [];
   for (var sessionId in io.sockets.sockets) {
     if (io.sockets.sockets[sessionId].uid == uid) {
@@ -423,7 +442,7 @@ var getNodejsSessionIdsFromUid = function(uid) {
 /**
  * Get the list of Node.js sessionIds for a given authToken.
  */
-var getNodejsSessionIdsFromAuthToken = function(authToken) {
+var getNodejsSessionIdsFromAuthToken = function (authToken) {
   var sessionIds = [];
   for (var sessionId in io.sockets.sockets) {
     if (io.sockets.sockets[sessionId].authToken == authToken) {
@@ -436,7 +455,7 @@ var getNodejsSessionIdsFromAuthToken = function(authToken) {
 /**
  * Add a user to a channel.
  */
-var addUserToChannel = function(request, response) {
+var addUserToChannel = function (request, response) {
   var uid = request.params.uid || '';
   var channel = request.params.channel || '';
   if (uid && channel) {
@@ -488,7 +507,7 @@ var addUserToChannel = function(request, response) {
 /**
  * Add an authToken to a channel.
  */
-var addAuthTokenToChannel = function(request, response) {
+var addAuthTokenToChannel = function (request, response) {
   var authToken = request.params.authToken || '';
   var channel = request.params.channel || '';
   if (!authToken || !channel) {
@@ -533,7 +552,7 @@ var addAuthTokenToChannel = function(request, response) {
 /**
  * Add a client (specified by session ID) to a channel.
  */
-var addClientToChannel = function(sessionId, channel) {
+var addClientToChannel = function (sessionId, channel) {
   if (sessionId && channel) {
     if (!/^[0-9]+$/.test(sessionId) || !io.sockets.sockets.hasOwnProperty(sessionId)) {
       console.log("addClientToChannel: Invalid sessionId: " + sessionId);
@@ -559,7 +578,7 @@ var addClientToChannel = function(sessionId, channel) {
 /**
  * Remove a user from a channel.
  */
-var removeUserFromChannel = function(request, response) {
+var removeUserFromChannel = function (request, response) {
   var uid = request.params.uid || '';
   var channel = request.params.channel || '';
   if (uid && channel) {
@@ -608,7 +627,7 @@ var removeUserFromChannel = function(request, response) {
 /**
  * Remove an authToken from a channel.
  */
-var removeAuthTokenFromChannel = function(request, response) {
+var removeAuthTokenFromChannel = function (request, response) {
   var authToken = request.params.authToken || '';
   var channel = request.params.channel || '';
   if (authToken && channel) {
@@ -655,7 +674,7 @@ var removeAuthTokenFromChannel = function(request, response) {
 /**
  * Remove a client (specified by session ID) from a channel.
  */
-var removeClientFromChannel = function(sessionId, channel) {
+var removeClientFromChannel = function (sessionId, channel) {
   if (sessionId && channel) {
     if (!/^[0-9]+$/.test(sessionId) || !io.sockets.sockets.hasOwnProperty(sessionId)) {
       console.log("removeClientFromChannel: Invalid sessionId: " + sessionId);
@@ -680,7 +699,7 @@ var removeClientFromChannel = function(sessionId, channel) {
 /**
  * Setup a io.sockets.sockets{}.connection with uid, channels etc.
  */
-var setupClientConnection = function(sessionId, authData) {
+var setupClientConnection = function (sessionId, authData) {
   if (!io.sockets.sockets[sessionId]) {
     console.log("Client socket '" + sessionId + "' went away.");
     console.log(authData);
@@ -694,6 +713,13 @@ var setupClientConnection = function(sessionId, authData) {
   for (var i in authData.channels) {
     channels[authData.channels[i]] = channels[authData.channels[i]] || {'sessionIds': {}};
     channels[authData.channels[i]].sessionIds[sessionId] = sessionId;
+  }
+  if (authData.uid != 0 && authData.buddies) {
+    buddyLists[authData.uid] = authData.buddies;
+  }
+  if (authData.uid != 0 && authData.presenceUids) {
+    onlineUsers[authData.uid] = authData.presenceUids;
+    console.log(onlineUsers);
   }
   process.emit('client-authenticated', sessionId, authData);
 };
@@ -780,6 +806,26 @@ var cleanupSocket = function (socket) {
   }
   for (var channel in channels) {
     delete channels[channel].sessionIds[socket.id];
+  }
+  var uid = socket.uid;
+  if (uid != 0) {
+    if (presenceTimeoutIds[uid]) {
+      clearTimeout(presenceTimeoutIds[uid]);
+    }
+    presenceTimeoutIds[uid] = setTimeout(checkOnlineStatus, 2000, uid);
+  }
+  delete io.sockets.sockets[socket.id];
+}
+
+/**
+ * Check for any open sockets for uid.
+ */
+var checkOnlineStatus = function (uid) {
+  if (getNodejsSessionIdsFromUid(uid).length == 0) {
+    if (backendSettings.debug) {
+      console.log("Sending offline notification for", uid);
+    }
+    sendPresenceChangeNotification(authData.uid, 'offline');
   }
 }
 
