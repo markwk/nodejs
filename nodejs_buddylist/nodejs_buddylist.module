@@ -7,36 +7,34 @@ function nodejs_buddylist_init() {
   drupal_add_js(array('nodejs_buddylist' => array('max_buddies' => variable_get('nodejs_buddylist_max_buddies', 0))), 'setting');
 }
 
-/*
- * Implements hook_menu()
- *
+/**
+ * Implements hook_menu().
  */
-
 function nodejs_buddylist_menu() {
   return array(
     'admin/config/nodejs/nodejs_buddylist' => array(
-	  'title' => 'Node.js Buddylist Settings',
-	  'description' => 'Settings for node.js buddylist.',
-	  'page callback' => 'system_admin_menu_block_page',
-	  'access arguments' => array('access administration pages'),
-	  'file' => 'system.admin.inc',
-	  'file path' => drupal_get_path('module', 'system'),
-	  'position' => 'left',
-	  'weight' => 1,
+      'title' => 'Node.js Buddylist Settings',
+      'description' => 'Settings for node.js buddylist.',
+      'page callback' => 'system_admin_menu_block_page',
+      'access arguments' => array('access administration pages'),
+      'file' => 'system.admin.inc',
+      'file path' => drupal_get_path('module', 'system'),
+      'position' => 'left',
+      'weight' => 1,
     ),
     'admin/config/nodejs/nodejs_buddylist/overseer' => array(
-	  'title' => 'Overseer',
+      'title' => 'Overseer',
       'description' => 'Dashboard for seeing all logged in users.',
       'page callback' => 'nodejs_buddylist_overseer_page',
-	  'access arguments' => array('administer nodejs_buddylist settings'),
+      'access arguments' => array('administer nodejs_buddylist settings'),
     ),
     'admin/config/nodejs/nodejs_buddylist/settings' => array(
-	  'title' => 'Node.js Buddylist Settings',
-	  'description' => 'Settings for node.js buddylist.',
-	  'page callback' => 'drupal_get_form',
-	  'page arguments' => array('nodejs_buddylist_settings_form'),
-	  'access arguments' => array('administer nodejs_buddylist settings'),
-	),	 
+      'title' => 'Node.js Buddylist Settings',
+      'description' => 'Settings for node.js buddylist.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('nodejs_buddylist_settings_form'),
+      'access arguments' => array('administer nodejs_buddylist settings'),
+    ),   
   );
 }
 
@@ -49,7 +47,7 @@ function nodejs_buddylist_permission() {
       'title' => t('Use Node.js Buddylist'), 
       'description' => t('Allows users to use node.js buddylist.'),
     ),
-	'administer nodejs_buddylist settings' => array(
+    'administer nodejs_buddylist settings' => array(
       'title' => t('Administer Node.js Buddylist'), 
       'description' => t('Allow user to administrate node.js buddylist.'),
     ),
@@ -89,13 +87,12 @@ function nodejs_buddylist_settings_form_submit($form, &$form_state) {
 }
 
 function nodejs_buddylist_overseer_page() {
-	$output = 'This is the page where an admin should be able to see all users';
-	return $output;
+  $output = 'This is the page where an admin should be able to see all users';
+  return $output;
 }
 
-/*
- * Implementation of hook_block_info
- *
+/**
+ * Implementation of hook_block_info.
  */
 function nodejs_buddylist_block_info() {
   $blocks = array();
@@ -114,29 +111,28 @@ function nodejs_buddylist_block_info() {
     'info' => 'Nodejs Buddylist a specific users buddylist.',
     'cache' => DRUPAL_NO_CACHE,
   );
-  
+
   return $blocks;
 }
 
-/*
- * Implementation of hook_block_view
- *
+/**
+ * Implementation of hook_block_view().
  */
 function nodejs_buddylist_block_view($delta = '') {
   $block = array();
-  
+ 
   switch($delta) {
     case 'nodejs_buddylist_all':
       $block['subject'] = 'All Users';
       $block['content'] = 'Content for all users';
     break;
 
-	case 'nodejs_buddylist_users_for_channel':
-	  $block['subject'] = 'All Users for a channel';
+    case 'nodejs_buddylist_users_for_channel':
+      $block['subject'] = 'All Users for a channel';
       $block['content'] = 'Content for all users per channel';
     break;
 
-	case 'nodejs_buddylist_buddylist':
+    case 'nodejs_buddylist_buddylist':
       $block['subject'] = 'Your Buddylist';
       $block['content'] = 'Content for users buddylist';
     break;
@@ -148,46 +144,43 @@ function nodejs_buddylist_block_view($delta = '') {
   return $block;
 }
 
-/*
- * Implementation of hook_user_login
- *
+/**
+ * Implementation of hook_user_login().
  */
 function nodejs_buddylist_user_login(&$edit, $account) {
-	//Load the existing user's friends
-	$friends = flag_friend_get_friends($account->uid);
-	foreach($friends as $friend_index => $friend){
-		//Reload the buddy list of each of these people $friend->uid
-	}
+  // Load the existing user's friends
+  $friends = flag_friend_get_friends($account->uid);
+  foreach($friends as $friend_index => $friend){
+      //Reload the buddy list of each of these people $friend->uid
+  }
 }
 
-/*
- * Implementation of hook_user_logout
- *
+/**
+ * Implementation of hook_user_logout().
  */
 function nodejs_buddylist_user_logout($account) {
-	//execute code for when a user logs out
-	$friends = flag_friend_get_friends($account->uid);
-	foreach($friends as $friend_index => $friend){
-		//Reload the buddy list of each of these people $friend->uid
-	}
+  //execute code for when a user logs out
+  $friends = flag_friend_get_friends($account->uid);
+  foreach($friends as $friend_index => $friend){
+      //Reload the buddy list of each of these people $friend->uid
+  }
 }
 
-/*
+/**
  * nodejs_buddylist_render_all_users_unordered_list
- * 
  */
 function nodejs_buddylist_render_all_online_users_unordered_list() {
-	$output = '<ul>';
-	$output .= '<li>person</li>';
-	$output .= '</ul>';
-	return $output;
+  $output = '<ul>';
+  $output .= '<li>person</li>';
+  $output .= '</ul>';
+  return $output;
 }
 
-/*
+/**
  * nodejs_buddylist_reload_friends_lists
- *
  */
 function nodejs_buddylist_reload_friends_lists($uid) {
-	//Load a specific person's buddy list by uid
-	//Execute a callback for the user on his channel
+  //Load a specific person's buddy list by uid
+  //Execute a callback for the user on his channel
 }
+
