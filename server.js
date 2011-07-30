@@ -18,7 +18,6 @@ var http = require('http'),
 var channels = {},
     authenticatedClients = {},
     onlineUsers = {},
-    buddyLists = {},
     presenceTimeoutIds = {},
     tokenChannels = {};
 
@@ -136,6 +135,7 @@ backendSettings.getActiveChannelsUrl = '/nodejs/stats/channels';
 backendSettings.kickUserUrl = '/nodejs/user/kick/:uid';
 backendSettings.addUserToChannelUrl = '/nodejs/user/channel/add/:channel/:uid';
 backendSettings.removeUserFromChannelUrl = '/nodejs/user/channel/remove/:channel/:uid';
+backendSettings.setUserPresenceListUrl = '/nodejs/user/presence-list/:uid/:uidList';
 backendSettings.addAuthTokenToChannelUrl = '/nodejs/authtoken/channel/add/:channel/:uid';
 backendSettings.removeAuthTokenFromChannelUrl = '/nodejs/authtoken/channel/remove/:channel/:uid';
 backendSettings.toggleDebugUrl = '/nodejs/debug/toggle';
@@ -697,6 +697,38 @@ var removeClientFromChannel = function (sessionId, channel) {
 };
 
 /**
+ * Set the list of users a uid can see presence info about.
+ */
+var setUserPresenceList = function (uid, uids) {
+  var uid = request.params.uid || '';
+  var uidlist = request.params.uidlist.split(',') || [];
+  if (uid && uidlist) {
+    if (!/^\d+$/.test(uid)) {
+      console.log("Invalid uid: " + uid);
+      response.send({'status': 'failed', 'error': 'Invalid uid.'});
+      return;
+    }
+    if (uidlist.length == 0) {
+      console.log("Empty uidlist");
+      response.send({'status': 'failed', 'error': 'Empty uid list.'});
+      return;
+    }
+    for (var i in uidlist) {
+      if (!/^\d+$/.test(uidlist[i])) {
+        console.log("Invalid uid: " + uid);
+        response.send({'status': 'failed', 'error': 'Invalid uid.'});
+        return;
+      }
+    }
+    onlineUsers[uid] = uidlist;
+    response.send({'status': 'success'});
+  }
+  else {
+    response.send({'status': 'failed', 'error': 'Invalid parameters.'});
+  }
+}
+
+/**
  * Setup a io.sockets.sockets{}.connection with uid, channels etc.
  */
 var setupClientConnection = function (sessionId, authData) {
@@ -714,12 +746,8 @@ var setupClientConnection = function (sessionId, authData) {
     channels[authData.channels[i]] = channels[authData.channels[i]] || {'sessionIds': {}};
     channels[authData.channels[i]].sessionIds[sessionId] = sessionId;
   }
-  if (authData.uid != 0 && authData.buddies) {
-    buddyLists[authData.uid] = authData.buddies;
-  }
   if (authData.uid != 0 && authData.presenceUids) {
     onlineUsers[authData.uid] = authData.presenceUids;
-    console.log(onlineUsers);
   }
   process.emit('client-authenticated', sessionId, authData);
 };
@@ -741,6 +769,7 @@ server.get(backendSettings.getActiveChannelsUrl, getActiveChannels);
 server.get(backendSettings.kickUserUrl, kickUser);
 server.get(backendSettings.addUserToChannelUrl, addUserToChannel);
 server.get(backendSettings.removeUserFromChannelUrl, removeUserFromChannel);
+server.get(backendSettings.setUserPresenceListUrl, setUserPresenceList);
 server.get(backendSettings.toggleDebugUrl, toggleDebug);
 server.get('*', send404);
 server.listen(backendSettings.port, backendSettings.host);
