@@ -55,7 +55,7 @@ backendSettings = {
   'port': 8080,
   'key': '/path/to/key/file',
   'cert': '/path/to/cert/file',
-  'resource': '/node.js/realtime',
+  'resource': '/socket.io',
   'publishUrl': '/nodejs/publish',
   'serviceKey': '',
   'backend': {

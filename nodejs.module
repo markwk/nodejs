@@ -112,12 +112,28 @@ function nodejs_init() {
   if (isset($nodejs_config['serviceKey'])) {
     unset($nodejs_config['serviceKey']);
   }
-  drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/socket.io/node_modules/socket.io-client/dist/socket.io.js', array('type' => 'file'));
+  $socket_io_config = nodejs_get_socketio_js_config($nodejs_config);
+  drupal_add_js($socket_io_config['path'], array('type' => $socket_io_config['type']));
   drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', array('type' => 'file'));
   drupal_add_js(array('nodejs' => $nodejs_config), array('type' => 'setting'));
   foreach (nodejs_get_js_handlers() as $handler_file) {
     drupal_add_js($handler_file, array('type' => 'file'));
   }
+}
+
+/**
+ * Return the path to the socket.io client js.
+ */
+function nodejs_get_socketio_js_config($nodejs_config) {
+  $socket_io_config = array(
+    'path' => variable_get('nodejs_socket_io_path', FALSE),
+    'type' => variable_get('nodejs_socket_io_type', 'external'),
+  );
+  if (!$socket_io_config['path']) {
+    $socket_io_config['path'] = $nodejs_config['scheme'] . '://' . $nodejs_config['host'] . ':'
+                              . $nodejs_config['port'] . $nodejs_config['resource'] . '/socket.io.js';
+  }
+  return $socket_io_config;
 }
 
 /**
@@ -411,7 +427,7 @@ function nodejs_get_config() {
     'secure' => variable_get('nodejs_server_scheme', 'http') == 'https' ? 1 : 0,
     'host' => variable_get('nodejs_server_host', 'localhost'),
     'port' => variable_get('nodejs_server_port', '8080'),
-    'resource' => '/node.js/realtime',
+    'resource' => '/socket.io',
     'authToken' => md5(session_id()),
     'serviceKey' => variable_get('nodejs_service_key', ''),
     'websocketSwfLocation' => base_path() . drupal_get_path('module', 'nodejs') . '/socket_io/socket.io/support/socket.io-client/lib/vendor/web-socket-js/WebSocketMain.swf',
