@@ -22,12 +22,6 @@ function nodejs_buddylist_menu() {
       'position' => 'left',
       'weight' => 1,
     ),
-    'admin/config/nodejs/nodejs_buddylist/overseer' => array(
-      'title' => 'Overseer',
-      'description' => 'Dashboard for seeing all logged in users.',
-      'page callback' => 'nodejs_buddylist_overseer_page',
-      'access arguments' => array('administer nodejs_buddylist settings'),
-    ),
     'admin/config/nodejs/nodejs_buddylist/settings' => array(
       'title' => 'Node.js Buddylist Settings',
       'description' => 'Settings for node.js buddylist.',
@@ -36,6 +30,24 @@ function nodejs_buddylist_menu() {
       'access arguments' => array('administer nodejs_buddylist settings'),
     ),   
   );
+}
+
+/**
+ * Implements hook_nodejs_user_presence_list().
+ */
+function nodejs_buddlylist_nodejs_user_presence_list($account) {
+  $sql = 'SELECT uid1, uid2 
+          FROM {nodejs_buddylist} 
+          WHERE (uid1 = :uid OR uid2 = :uid)
+          AND authorised = 1';
+  $params = array(':uid1' => $account->uid, ':uid2' => $account->uid);
+  $presence_list = array();
+  if ($buddies = db_query($sql, $params)->fetchAll()) {
+    foreach ($buddies as $buddy) {
+      $presence_list[] = $buddy->uid1 == $account->uid ? $buddy->uid2 : $buddy->uid1;
+    }
+  }
+  return $presence_list;
 }
 
 /**
@@ -55,16 +67,7 @@ function nodejs_buddylist_permission() {
 }
 
 /**
- * Implements hook_nodejs_user_channels().
- */
-function nodejs_buddylist_nodejs_user_channels($account) {
-  //execute code for when a user joins a channel
-  //notify or execute code for all users on this channel
-}
-
-/**
- * Nodejs Buddy list settings form
- * johnnymugs
+ * Nodejs Buddy list settings form.
  */
 function nodejs_buddylist_settings_form() {
   $form['nodejs_buddylist_maxbuddies'] = array(
@@ -81,14 +84,12 @@ function nodejs_buddylist_settings_form() {
   return $form;
 }
 
+/**
+ * Nodejs Buddy list settings form submit.
+ */
 function nodejs_buddylist_settings_form_submit($form, &$form_state) {
   variable_set('nodejs_buddylist_maxbuddies', $form_state['values']['nodejs_buddylist_maxbuddies']);
   drupal_set_message(t('Max buddies set.'));
-}
-
-function nodejs_buddylist_overseer_page() {
-  $output = 'This is the page where an admin should be able to see all users';
-  return $output;
 }
 
 /**
@@ -140,47 +141,6 @@ function nodejs_buddylist_block_view($delta = '') {
     default:
     break;
   }
-  
   return $block;
-}
-
-/**
- * Implementation of hook_user_login().
- */
-function nodejs_buddylist_user_login(&$edit, $account) {
-  // Load the existing user's friends
-  $friends = flag_friend_get_friends($account->uid);
-  foreach($friends as $friend_index => $friend){
-      //Reload the buddy list of each of these people $friend->uid
-  }
-}
-
-/**
- * Implementation of hook_user_logout().
- */
-function nodejs_buddylist_user_logout($account) {
-  //execute code for when a user logs out
-  $friends = flag_friend_get_friends($account->uid);
-  foreach($friends as $friend_index => $friend){
-      //Reload the buddy list of each of these people $friend->uid
-  }
-}
-
-/**
- * nodejs_buddylist_render_all_users_unordered_list
- */
-function nodejs_buddylist_render_all_online_users_unordered_list() {
-  $output = '<ul>';
-  $output .= '<li>person</li>';
-  $output .= '</ul>';
-  return $output;
-}
-
-/**
- * nodejs_buddylist_reload_friends_lists
- */
-function nodejs_buddylist_reload_friends_lists($uid) {
-  //Load a specific person's buddy list by uid
-  //Execute a callback for the user on his channel
 }
 
