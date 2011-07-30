@@ -747,6 +747,16 @@ server.listen(backendSettings.port, backendSettings.host);
 console.log('Started ' + backendSettings.scheme + ' server.');
 
 var io = socket_io.listen(server, {port: backendSettings.port, resource: backendSettings.resource});
+io.configure(function () {
+  io.set('transports', backendSettings.transports);
+  io.set('log level', backendSettings.logLevel);
+  if (backendSettings.jsEtag) {
+    io.enable('browser client etag');
+  }
+  if (backendSettings.jsMinification) {
+    io.enable('browser client minification');
+  }
+});
 
 io.sockets.on('connection', function(socket) {
   process.emit('client-connection', socket.id);
@@ -825,7 +835,7 @@ var checkOnlineStatus = function (uid) {
     if (backendSettings.debug) {
       console.log("Sending offline notification for", uid);
     }
-    sendPresenceChangeNotification(authData.uid, 'offline');
+    sendPresenceChangeNotification(uid, 'offline');
   }
 }
 
