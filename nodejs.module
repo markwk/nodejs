@@ -12,7 +12,7 @@ function nodejs_kick_user($uid) {
     return FALSE;
   }
   else {
-    return $result;
+    return $response;
   }
 }
 
@@ -29,7 +29,7 @@ function nodejs_set_user_presence_list($uid, array $uids) {
     return FALSE;
   }
   else {
-    return $result;
+    return $response;
   }
 }
 
