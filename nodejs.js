@@ -5,7 +5,6 @@ Drupal.Nodejs = Drupal.Nodejs || {'callbacks': {}, 'socket': false, 'connectionS
 
 Drupal.behaviors.nodejs = {
   attach: function (context, settings) {
-    window.WEB_SOCKET_SWF_LOCATION = Drupal.settings.nodejs.websocketSwfLocation;
     if (!Drupal.Nodejs.socket) {
       if (Drupal.Nodejs.connect()) {
         Drupal.Nodejs.sendAuthMessage();
