@@ -17,6 +17,23 @@ function nodejs_kick_user($uid) {
 }
 
 /**
+ * Set the list of uids a user can see presence notifications for.
+ *
+ * @param $uid
+ * @param $uids
+ */
+function nodejs_set_user_presence_list($uid, array $uids) {
+  $response = Nodejs::setUserPresenceList($uid, $uids);
+  if (isset($response->error)) {
+    watchdog('nodejs', t('Error setting user presence list for uid "%uid", error from the Node.js server: [%code] %error', array('%uid' => $uid, '%code' => $response->code, '%error' => $response->error)));
+    return FALSE;
+  }
+  else {
+    return $result;
+  }
+}
+
+/**
  * Broadcast a message to all clients.
  * 
  * @param string $subject
@@ -401,11 +418,8 @@ function nodejs_auth_check($auth_key) {
     // Get the list of channels I have access to.
     $auth_user->channels = module_invoke_all('nodejs_user_channels', $auth_user);
 
-    // Get the list of users who are my buddies.
-    $auth_user->buddies = module_invoke_all('nodejs_user_buddies', $auth_user);
-
     // Get the list of users who can see presence notifications about me.
-    $auth_user->presenceUids = module_invoke_all('nodejs_user_presence_list', $auth_user);
+    $auth_user->presenceUids = array_unique(module_invoke_all('nodejs_user_presence_list', $auth_user));
 
     $nodejs_config = nodejs_get_config(); 
     $auth_user->serviceKey = $nodejs_config['serviceKey'];
@@ -549,7 +563,12 @@ class Nodejs {
     );
     return drupal_http_request(self::$baseUrl . 'nodejs/publish', $options);
   }
-  
+
+  public static function setUserPresenceList($uid, array $uids) {
+    self::initConfig();
+    return drupal_http_request(self::$baseUrl . "nodejs/user/presence-list/$uid/" . implode(',', $uids), array('headers' => self::$headers));
+  }
+
   public static function kickUser($uid) {
     self::initConfig();
     return drupal_http_request(self::$baseUrl . "nodejs/user/kick/$uid", array('headers' => self::$headers));
