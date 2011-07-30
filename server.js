@@ -229,10 +229,10 @@ var authenticateClient = function (client, message) {
 var sendPresenceChangeNotification = function (uid, presenceEvent) {
   if (onlineUsers[uid]) {
     for (var i in onlineUsers[uid]) {
-      if (backendSettings.debug) {
+      var sessionIds = getNodejsSessionIdsFromUid(onlineUsers[uid][i]);
+      if (sessionIds.length > 0 && backendSettings.debug) {
         console.log('Sending presence notification for', uid, 'to', onlineUsers[uid][i]);
       }
-      var sessionIds = getNodejsSessionIdsFromUid(onlineUsers[uid][i]);
       for (var j in sessionIds) {
         io.sockets.socket(sessionIds[j]).json.send({'presenceNotification': {'uid': uid, 'event': presenceEvent}});
       }
