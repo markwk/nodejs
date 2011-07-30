@@ -425,9 +425,34 @@ function nodejs_auth_check($auth_key) {
     $auth_user->serviceKey = $nodejs_config['serviceKey'];
     drupal_add_http_header('NodejsServiceKey', $nodejs_config['serviceKey']);
     module_invoke_all('nodejs_auth_check', $auth_user);
+    nodejs_user_set_online($auth_user);
   }
   drupal_json_output($auth_user);
   drupal_exit();
+}
+
+/**
+ * Set the user as online.
+ *
+ * @param $account
+ */
+function nodejs_user_set_online($account) {
+  try {
+    db_query('INSERT INTO {nodejs_presence} (uid, login_time) VALUES (:uid, :login_time)', array(':uid' => $account->uid, ':login_time' => time()));
+  }
+  catch (Exception $e) { }
+}
+
+/**
+ * Set the user as offline.
+ *
+ * @param $account
+ */
+function nodejs_user_set_offline($account) {
+  try {
+    db_query('DELETE FROM {nodejs_presence} WHERE uid = :uid', array(':uid' => $account->uid));
+  }
+  catch (Exception $e) { }
 }
 
 /**
