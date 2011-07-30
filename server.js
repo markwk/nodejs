@@ -22,39 +22,6 @@ var channels = {},
     tokenChannels = {};
 
 /**
- * 1. Presence notifications, triggered by connect and disconnect events.
- * 2. We keep a list, keyed by uid, of uids allowed to see presence changes
- *    for that uid key. Drupal is the keeper of this list, no client can
- *    modify the list.
- * 3. Drupal will send a) list of people user is allowed to see, and b) list of
- *    users allowed to see user.
- * 4. List from 3. a) is stored by uid buddyLists, and is used to allow fast
- *    answers to "who from my buddly list is online?":
- *    <code>
- *    function getListOfOnlineBuddies(uidOfUser) {
- *      var onlineBuddies = [];
- *      for (var uid in buddyLists[uidOfUser]) {
- *        if (onlineUsers[uid]) {
- *          onlineBuddies.push(uid);
- *        }
- *      }
- *      return onlineBuddies;
- *    }
- *    </code>
- * 5. List from 3. b) is simply added to userPresenceChannels:
- *    <code>
- *    onlineUsers[uid] = listOfUidsWhoCanWatchMe;
- *    </code>
- * 6. Don't send disconnect without a setTimeout on the event first, so we
- *    don't send spurious updates
- * 7. Drupal has a boolean for online for all users. We send auth, so drupal
- *    can use that for the online event, and we send disconnect. We need to 
- *    handle multiple http sessions gracefully. We want this at the scope of
- *    the uid, not the http session.
- * 8. Allow clients to fetch the presence lists via node.js.
- */
-
-/**
  * Socket lifetime, token-identified channels.
  *
  * There are use cases where we want to send messages that update some content,
