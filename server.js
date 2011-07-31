@@ -13,6 +13,7 @@ var http = require('http'),
     express = require('express'),
     socket_io = require('socket.io'),
     util = require('util'),
+    querystring = require('querystring'),
     vm = require('vm');
 
 var channels = {},
@@ -118,6 +119,36 @@ var channelIsClientWritable = function (channel) {
 }
 
 /**
+ * Send a message to the backend.
+ */
+var sendMessageToBackend = function (message, callback) {
+  var requestBody = querystring.stringify({
+        messageJson: JSON.stringify(message), 
+        authKey: backendSettings.backend.authKey
+      }),
+      options = {
+        port: backendSettings.backend.port,
+        host: backendSettings.backend.host,
+        headers: {
+          'Content-Length': Buffer.byteLength(requestBody),
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        agent: false,
+        method: 'POST',
+        agent: http.getAgent(backendSettings.backend.host, backendSettings.backend.port),
+        path: backendSettings.backend.messagePath
+      },
+      scheme = backendSettings.backend.scheme,
+      request;
+
+  request = scheme == 'http' ? http.request(options, callback) : https.request(options, callback);
+  request.on('error', function (error) {
+    console.log("Error sending message to backend:", error.message);
+  });
+  request.end(requestBody);
+}
+
+/**
  * Authenticate a client connection based on the message it sent.
  */
 var authenticateClient = function (client, message) {
@@ -127,67 +158,59 @@ var authenticateClient = function (client, message) {
       console.log('Reusing existing authentication data for key:', message.authToken, ', client id:', client.id);
     }
     setupClientConnection(client.id, authenticatedClients[message.authToken]);
-    return;
-  }
-
-  var options = {
-    port: backendSettings.backend.port,
-    host: backendSettings.backend.host,
-    path: backendSettings.backend.authPath + message.authToken
-  };
-  if (backendSettings.backend.scheme == 'https') {
-    https.get(options, authenticateClientCallback)
-      .on('error', authenticateErrorCallback);
   }
   else {
-    http.get(options, authenticateClientCallback)
-      .on('error', authenticateErrorCallback);
+    message.messageType = 'authenticate';
+    message.clientId = client.id;
+    sendMessageToBackend(message, authenticateClientCallback);
   }
-  function authenticateClientCallback(response) {
-    response.on('data', function (chunk) {
-      if (response.statusCode == 404) {
-        if (backendSettings.debug) {
-          console.log('Backend authentication url not found, tried using these options: ');
-          console.log(options);
-        }
-        else {
-          console.log('Backend authentication url not found.');
-        }
-        return;
-      }
-      response.setEncoding('utf8');
-      var authData = false;
-      try {
-        authData = JSON.parse(chunk);
-      }
-      catch (exception) {
-        console.log('Failed to parse authentication message: ' + exception);
-        if (backendSettings.debug) {
-          console.log('Failed message string: ' + chunk);
-        }
-        return;
-      }
-      if (!checkServiceKey(authData.serviceKey)) {
-        console.log('Invalid service key "' + authData.serviceKey + '"');
-        return;
-      }
-      if (authData.nodejs_valid_auth_key) {
-        if (backendSettings.debug) {
-          console.log("Valid login for uid: " + authData.uid);
-        }
-        authenticatedClients[message.authToken] = authData;
-        setupClientConnection(client.id, authData);
-        sendPresenceChangeNotification(authData.uid, 'online');
+}
+
+/**
+ * Handle authentication call response.
+ */
+var authenticateClientCallback  = function (response) {
+  response.on('data', function (chunk) {
+    if (response.statusCode == 404) {
+      if (backendSettings.debug) {
+        console.log('Backend authentication url not found, tried using these options: ');
+        console.log(options);
       }
       else {
-        console.log('Invalid login for uid "' + authData.uid + '"');
-        delete authenticatedClients[message.authToken];
+        console.log('Backend authentication url not found.');
       }
-    });
-  }
-  function authenticateErrorCallback(exception) {
-    console.log("Error hitting backend with authentication token: " + exception);
-  }
+      return;
+    }
+    response.setEncoding('utf8');
+    var authData = false;
+    try {
+      authData = JSON.parse(chunk);
+      console.log(authData);
+    }
+    catch (exception) {
+      console.log('Failed to parse authentication message:', exception);
+      if (backendSettings.debug) {
+        console.log('Failed message string: ' + chunk);
+      }
+      return;
+    }
+    if (!checkServiceKey(authData.serviceKey)) {
+      console.log('Invalid service key "', authData.serviceKey, '"');
+      return;
+    }
+    if (authData.nodejs_valid_auth_key) {
+      if (backendSettings.debug) {
+        console.log('Valid login for uid "', authData.uid, '"');
+      }
+      authenticatedClients[authData.auth_key] = authData;
+      setupClientConnection(authData.clientId, authData);
+      sendPresenceChangeNotification(authData.uid, 'online');
+    }
+    else {
+      console.log('Invalid login for uid "', authData.uid, '"');
+      delete authenticatedClients[authData.auth_key];
+    }
+  });
 }
 
 /**
@@ -316,7 +339,6 @@ var publishMessageToClient = function (sessionId, message) {
     }
     return true;
   }
-  return false;
 };
 
 /**
@@ -453,9 +475,6 @@ var addUserToChannel = function (request, response) {
     }
     for (var authToken in authenticatedClients) {
       if (authenticatedClients[authToken].uid == uid) {
-        if (backendSettings.debug) {
-          console.log("Found uid '" + uid + "' in authenticatedClients, channels " + authenticatedClients[authToken].channels.toString());
-        }
         if (authenticatedClients[authToken].channels.indexOf(channel) == -1) {
           authenticatedClients[authToken].channels.push(channel);
           if (backendSettings.debug) {
@@ -696,6 +715,47 @@ var setUserPresenceList = function (uid, uids) {
 }
 
 /**
+ * Cleanup after a socket has disconnected.
+ */
+var cleanupSocket = function (socket) {
+  if (backendSettings.debug) {
+    console.log("Cleaning up after socket " + socket.id);
+  }
+  for (var channel in channels) {
+    delete channels[channel].sessionIds[socket.id];
+  }
+  var uid = socket.uid;
+  if (uid != 0) {
+    if (presenceTimeoutIds[uid]) {
+      clearTimeout(presenceTimeoutIds[uid]);
+    }
+    presenceTimeoutIds[uid] = setTimeout(checkOnlineStatus, 2000, uid);
+  }
+  delete io.sockets.sockets[socket.id];
+}
+
+/**
+ * Check for any open sockets for uid.
+ */
+var checkOnlineStatus = function (uid) {
+  if (getNodejsSessionIdsFromUid(uid).length == 0) {
+    if (backendSettings.debug) {
+      console.log("Sending offline notification for", uid);
+    }
+    setUserOffline(uid);
+  }
+}
+
+/**
+ * Sends offline notification to sockets, the backend and cleans up our list.
+ */
+var setUserOffline = function (uid) {
+  sendPresenceChangeNotification(uid, 'offline');
+  delete onlineUsers[uid];
+  sendMessageToBackend({uid: uid, messageType: 'userOffline'}, function (response) { });
+}
+
+/**
  * Setup a io.sockets.sockets{}.connection with uid, channels etc.
  */
 var setupClientConnection = function (sessionId, authData) {
@@ -802,38 +862,6 @@ io.sockets.on('connection', function(socket) {
 .on('error', function(exception) {
   console.log('Socket error [' + exception + ']');
 });
-
-/**
- * Cleanup after a socket has disconnected.
- */
-var cleanupSocket = function (socket) {
-  if (backendSettings.debug) {
-    console.log("Cleaning up after socket " + socket.id);
-  }
-  for (var channel in channels) {
-    delete channels[channel].sessionIds[socket.id];
-  }
-  var uid = socket.uid;
-  if (uid != 0) {
-    if (presenceTimeoutIds[uid]) {
-      clearTimeout(presenceTimeoutIds[uid]);
-    }
-    presenceTimeoutIds[uid] = setTimeout(checkOnlineStatus, 2000, uid);
-  }
-  delete io.sockets.sockets[socket.id];
-}
-
-/**
- * Check for any open sockets for uid.
- */
-var checkOnlineStatus = function (uid) {
-  if (getNodejsSessionIdsFromUid(uid).length == 0) {
-    if (backendSettings.debug) {
-      console.log("Sending offline notification for", uid);
-    }
-    sendPresenceChangeNotification(uid, 'offline');
-  }
-}
 
 /**
  * Invokes the specified function on all registered server extensions.
