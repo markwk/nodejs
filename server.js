@@ -169,7 +169,7 @@ var authenticateClient = function (client, message) {
 /**
  * Handle authentication call response.
  */
-var authenticateClientCallback  = function (response) {
+var authenticateClientCallback = function (response) {
   response.on('data', function (chunk) {
     if (response.statusCode == 404) {
       if (backendSettings.debug) {
@@ -185,7 +185,6 @@ var authenticateClientCallback  = function (response) {
     var authData = false;
     try {
       authData = JSON.parse(chunk);
-      console.log(authData);
     }
     catch (exception) {
       console.log('Failed to parse authentication message:', exception);
