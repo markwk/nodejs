@@ -191,10 +191,9 @@ function nodejs_menu() {
       'page callback' => 'nodejs_server_stats_page',
       'access arguments' => array('access node.js server stats'),
     ),
-    'nodejs/auth/%' => array(
-      'title' => 'Who goes there?',
-      'page callback' => 'nodejs_auth_check',
-      'page arguments' => array(2),
+    'nodejs/message' => array(
+      'title' => 'Message from Node.js server',
+      'page callback' => 'nodejs_message_handler',
       'access callback' => TRUE,
       'type' => MENU_CALLBACK,
     ),
@@ -406,13 +405,34 @@ function nodejs_user_logout($account) {
 }
 
 /**
- * Menu callback: checks the given key to see if it matches a valid session.
+ * Menu callback: handles all messages from Node.js server.
  */
-function nodejs_auth_check($auth_key) {
-  $uid = db_query("SELECT uid FROM {sessions} WHERE MD5(sid) = :auth_key", array(':auth_key' => $auth_key))->fetchField();
+function nodejs_message_handler() {
+  if (isset($_POST['messageJson']) && $_POST['authKey']) {
+    $message = drupal_json_decode($_POST['messageJson']);
+  }
+
+  switch ($message['messageType']) {
+    case 'authenticate':
+      $response = nodejs_auth_check($message);
+      break;
+    default:
+      $response = array('error' => 'Not implemented');
+  }
+
+  drupal_json_output($response);
+  drupal_exit();
+}
+
+/**
+ * Checks the given key to see if it matches a valid session.
+ */
+function nodejs_auth_check($message) {
+  $uid = db_query("SELECT uid FROM {sessions} WHERE MD5(sid) = :auth_key", array(':auth_key' => $message['authToken']))->fetchField();
   $auth_user = $uid > 0 ? user_load($uid) : drupal_anonymous_user();
-  $auth_user->auth_key = $auth_key;
+  $auth_user->auth_key = $message['authToken'];
   $auth_user->nodejs_valid_auth_key = $uid !== FALSE;
+  $auth_user->clientId = $message['clientId'];
 
   if ($auth_user->nodejs_valid_auth_key) {
     // Get the list of channels I have access to.
@@ -425,10 +445,11 @@ function nodejs_auth_check($auth_key) {
     $auth_user->serviceKey = $nodejs_config['serviceKey'];
     drupal_add_http_header('NodejsServiceKey', $nodejs_config['serviceKey']);
     module_invoke_all('nodejs_auth_check', $auth_user);
-    nodejs_user_set_online($auth_user);
+    if ($auth_user->uid) {
+      nodejs_user_set_online($auth_user);
+    }
   }
-  drupal_json_output($auth_user);
-  drupal_exit();
+  return $auth_user;
 }
 
 /**

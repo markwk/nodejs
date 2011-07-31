@@ -4,50 +4,24 @@
  * Implements hook_init().
  */
 function nodejs_buddylist_init() {
-  drupal_add_js(array('nodejs_buddylist' => array('max_buddies' => variable_get('nodejs_buddylist_max_buddies', 0))), 'setting');
-}
-
-/**
- * Implements hook_menu().
- */
-function nodejs_buddylist_menu() {
-  return array(
-    'admin/config/nodejs/nodejs_buddylist' => array(
-      'title' => 'Node.js Buddylist Settings',
-      'description' => 'Settings for node.js buddylist.',
-      'page callback' => 'system_admin_menu_block_page',
-      'access arguments' => array('access administration pages'),
-      'file' => 'system.admin.inc',
-      'file path' => drupal_get_path('module', 'system'),
-      'position' => 'left',
-      'weight' => 1,
-    ),
-    'admin/config/nodejs/nodejs_buddylist/settings' => array(
-      'title' => 'Node.js Buddylist Settings',
-      'description' => 'Settings for node.js buddylist.',
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('nodejs_buddylist_settings_form'),
-      'access arguments' => array('administer nodejs_buddylist settings'),
-    ),   
-  );
+  global $user;
 }
 
 /**
  * Implements hook_nodejs_user_presence_list().
  */
-function nodejs_buddlylist_nodejs_user_presence_list($account) {
-  $sql = 'SELECT uid1, uid2 
-          FROM {nodejs_buddylist} 
-          WHERE (uid1 = :uid OR uid2 = :uid)
-          AND authorised = 1';
-  $params = array(':uid1' => $account->uid, ':uid2' => $account->uid);
-  $presence_list = array();
-  if ($buddies = db_query($sql, $params)->fetchAll()) {
-    foreach ($buddies as $buddy) {
-      $presence_list[] = $buddy->uid1 == $account->uid ? $buddy->uid2 : $buddy->uid1;
-    }
-  }
-  return $presence_list;
+function nodejs_buddylist_nodejs_user_presence_list($account) {
+  return nodejs_buddylist_user_list($account);
+}
+
+/**
+ * Get a list of buddies for the given account.
+ *
+ * @param $account
+ * @return array
+ */
+function nodejs_buddylist_user_list($account) {
+  $uids = array_keys(flag_friend_get_friends($account->uid));
 }
 
 /**
@@ -120,21 +94,14 @@ function nodejs_buddylist_block_info() {
  * Implementation of hook_block_view().
  */
 function nodejs_buddylist_block_view($delta = '') {
+  global $user;
+
   $block = array();
  
   switch($delta) {
-    case 'nodejs_buddylist_all':
-      $block['subject'] = 'All Users';
-      $block['content'] = 'Content for all users';
-    break;
-
-    case 'nodejs_buddylist_users_for_channel':
-      $block['subject'] = 'All Users for a channel';
-      $block['content'] = 'Content for all users per channel';
-    break;
-
     case 'nodejs_buddylist_buddylist':
-      $block['subject'] = 'Your Buddylist';
+      $block['subject'] = t('Your Buddylist');
+      $buddies = nodejs_buddylist_user_list($user);
       $block['content'] = 'Content for users buddylist';
     break;
 
