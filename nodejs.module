@@ -416,6 +416,10 @@ function nodejs_message_handler() {
     case 'authenticate':
       $response = nodejs_auth_check($message);
       break;
+    case 'userOffline':
+      nodejs_user_set_offline($message['uid']);
+      $response = array();
+      break;
     default:
       $response = array('error' => 'Not implemented');
   }
@@ -446,7 +450,7 @@ function nodejs_auth_check($message) {
     drupal_add_http_header('NodejsServiceKey', $nodejs_config['serviceKey']);
     module_invoke_all('nodejs_auth_check', $auth_user);
     if ($auth_user->uid) {
-      nodejs_user_set_online($auth_user);
+      nodejs_user_set_online($auth_user->uid);
     }
   }
   return $auth_user;
@@ -455,11 +459,11 @@ function nodejs_auth_check($message) {
 /**
  * Set the user as online.
  *
- * @param $account
+ * @param $uid
  */
-function nodejs_user_set_online($account) {
+function nodejs_user_set_online($uid) {
   try {
-    db_query('INSERT INTO {nodejs_presence} (uid, login_time) VALUES (:uid, :login_time)', array(':uid' => $account->uid, ':login_time' => time()));
+    db_query('INSERT INTO {nodejs_presence} (uid, login_time) VALUES (:uid, :login_time)', array(':uid' => $uid, ':login_time' => time()));
   }
   catch (Exception $e) { }
 }
@@ -467,11 +471,11 @@ function nodejs_user_set_online($account) {
 /**
  * Set the user as offline.
  *
- * @param $account
+ * @param $uid
  */
-function nodejs_user_set_offline($account) {
+function nodejs_user_set_offline($uid) {
   try {
-    db_query('DELETE FROM {nodejs_presence} WHERE uid = :uid', array(':uid' => $account->uid));
+    db_query('DELETE FROM {nodejs_presence} WHERE uid = :uid', array(':uid' => $uid));
   }
   catch (Exception $e) { }
 }
