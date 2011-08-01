@@ -17,6 +17,22 @@ function nodejs_kick_user($uid) {
 }
 
 /**
+ * Logout any sockets associated with the given token from the node.js server.
+ *
+ * @param mixed $token
+ */
+function nodejs_logout_user($token) {
+  $response = Nodejs::logoutUser($token);
+  if (isset($response->error)) {
+    watchdog('nodejs', t('Error logging out token "%token" from the Node.js server: [%code] %error', array('%token' => $token, '%code' => $response->code, '%error' => $response->error)));
+    return FALSE;
+  }
+  else {
+    return $response;
+  }
+}
+
+/**
  * Set the list of uids a user can see presence notifications for.
  *
  * @param $uid
@@ -401,7 +417,7 @@ function nodejs_nodejs_user_channels($account) {
  * Implements hook_user_logout().
  */
 function nodejs_user_logout($account) {
-  nodejs_kick_user($account->uid);
+  nodejs_logout_user($_SESSION['nodejs_config']['authKey']);
 }
 
 /**
@@ -520,15 +536,15 @@ function nodejs_get_server_stats() {
   $result = drupal_http_request(nodejs_get_url($config, 'nodejs/stats/server'));
   if (!isset($result->error) && isset($result->data)) {
     return (object) json_decode($result->data);
-  }
+  };
   return FALSE;
 }
 
 /**
  * Remove a user from a channel.
- * 
- * @param mixed $uid 
- * @param mixed $channel 
+ *
+ * @param mixed $uid
+ * @param mixed $channel
  * @return boolean
  */
 function nodejs_remove_user_from_channel($uid, $channel) {
@@ -617,6 +633,11 @@ class Nodejs {
   public static function setUserPresenceList($uid, array $uids) {
     self::initConfig();
     return drupal_http_request(self::$baseUrl . "nodejs/user/presence-list/$uid/" . implode(',', $uids), array('headers' => self::$headers));
+  }
+
+  public static function logoutUser($token) {
+    self::initConfig();
+    return drupal_http_request(self::$baseUrl . "nodejs/user/logout/$token", array('headers' => self::$headers));
   }
 
   public static function kickUser($uid) {
