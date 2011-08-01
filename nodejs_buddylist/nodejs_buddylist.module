@@ -11,7 +11,7 @@ function nodejs_buddylist_init() {
  * Implements hook_nodejs_user_presence_list().
  */
 function nodejs_buddylist_nodejs_user_presence_list($account) {
-  return nodejs_buddylist_user_list($account);
+  return array_keys(nodejs_buddylist_user_list($account));
 }
 
 /**
@@ -21,7 +21,7 @@ function nodejs_buddylist_nodejs_user_presence_list($account) {
  * @return array
  */
 function nodejs_buddylist_user_list($account) {
-  $uids = array_keys(flag_friend_get_friends($account->uid));
+  return flag_friend_get_friends($account->uid);
 }
 
 /**
@@ -33,61 +33,19 @@ function nodejs_buddylist_permission() {
       'title' => t('Use Node.js Buddylist'), 
       'description' => t('Allows users to use node.js buddylist.'),
     ),
-    'administer nodejs_buddylist settings' => array(
-      'title' => t('Administer Node.js Buddylist'), 
-      'description' => t('Allow user to administrate node.js buddylist.'),
-    ),
   );
-}
-
-/**
- * Nodejs Buddy list settings form.
- */
-function nodejs_buddylist_settings_form() {
-  $form['nodejs_buddylist_maxbuddies'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Max buddies'),
-    '#default_value' => variable_get('nodejs_buddylist_maxbuddies',0),
-    '#size' => 3,
-    '#description' => t('The max number of buddies a user can have. 0 is unlimited.'),
-  );
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Save'),
-  );
-  return $form;
-}
-
-/**
- * Nodejs Buddy list settings form submit.
- */
-function nodejs_buddylist_settings_form_submit($form, &$form_state) {
-  variable_set('nodejs_buddylist_maxbuddies', $form_state['values']['nodejs_buddylist_maxbuddies']);
-  drupal_set_message(t('Max buddies set.'));
 }
 
 /**
  * Implementation of hook_block_info.
  */
 function nodejs_buddylist_block_info() {
-  $blocks = array();
-  
-  $blocks['nodejs_buddylist_all'] = array(
-    'info' => 'Nodejs Buddylist admin view all users',
-    'cache' => DRUPAL_NO_CACHE,
+  return array(
+    'nodejs_buddylist_buddylist' => array(
+      'info' => 'Node.js Buddylist a specific users buddylist.',
+      'cache' => DRUPAL_NO_CACHE,
+    ),
   );
-
-  $blocks['nodejs_buddylist_perchan'] = array(
-    'info' => 'Nodejs Buddylist show users for a specified channel',
-    'cache' => DRUPAL_NO_CACHE,
-  );
-
-  $blocks['nodejs_buddylist_buddylist'] = array(
-    'info' => 'Nodejs Buddylist a specific users buddylist.',
-    'cache' => DRUPAL_NO_CACHE,
-  );
-
-  return $blocks;
 }
 
 /**
@@ -97,17 +55,42 @@ function nodejs_buddylist_block_view($delta = '') {
   global $user;
 
   $block = array();
- 
   switch($delta) {
     case 'nodejs_buddylist_buddylist':
       $block['subject'] = t('Your Buddylist');
-      $buddies = nodejs_buddylist_user_list($user);
-      $block['content'] = 'Content for users buddylist';
+      $block['content'] = nodejs_buddylist_block_content($user);
     break;
 
     default:
     break;
   }
   return $block;
+}
+
+/**
+ * Get the content for the buddy list block.
+ */
+function nodejs_buddylist_block_content($account) {
+  $buddies = nodejs_buddylist_user_list($account);
+  if ($buddies) {
+    $online_uids = nodejs_buddylist_get_online_uids(array_keys($buddies));
+    $html = '<ul>';
+    foreach ($buddies as $buddy) {
+      $html .= '<li>' . theme('username', array('account' => $buddy)) . '</li>';
+    }
+    $html .= '</ul>';
+    return $html;
+  }
+  else {
+    return t("You have no buddies.");
+  }
+}
+
+/**
+ * Filter the given list of uids based on who is online.
+ */
+function nodejs_buddylist_get_online_uids($uids) {
+  $online_uids = $uids;
+  return $uids;
 }
 
