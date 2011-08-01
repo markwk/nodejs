@@ -92,6 +92,7 @@ for (var i in backendSettings.extensions) {
 
 // Initialize other default settings
 backendSettings.kickUserUrl = '/nodejs/user/kick/:uid';
+backendSettings.logoutUserUrl = '/nodejs/user/logout/:authtoken';
 backendSettings.addUserToChannelUrl = '/nodejs/user/channel/add/:channel/:uid';
 backendSettings.removeUserFromChannelUrl = '/nodejs/user/channel/remove/:channel/:uid';
 backendSettings.setUserPresenceListUrl = '/nodejs/user/presence-list/:uid/:uidList';
@@ -132,6 +133,9 @@ var sendMessageToBackend = function (message, callback) {
       scheme = backendSettings.backend.scheme,
       request;
 
+  if (backendSettings.debug) {
+    console.log("Sending message to backend", message, options);
+  }
   request = scheme == 'http' ? http.request(options, callback) : https.request(options, callback);
   request.on('error', function (error) {
     console.log("Error sending message to backend:", error.message);
@@ -194,7 +198,6 @@ var authenticateClientCallback = function (response) {
       }
       authenticatedClients[authData.auth_key] = authData;
       setupClientConnection(authData.clientId, authData);
-      sendPresenceChangeNotification(authData.uid, 'online');
     }
     else {
       console.log('Invalid login for uid "', authData.uid, '"');
@@ -217,6 +220,9 @@ var sendPresenceChangeNotification = function (uid, presenceEvent) {
         io.sockets.socket(sessionIds[j]).json.send({'presenceNotification': {'uid': uid, 'event': presenceEvent}});
       }
     }
+  }
+  if (backendSettings.debug) {
+    console.log('sendPresenceChangeNotification', uid, presenceEvent, onlineUsers);
   }
 }
 
@@ -370,6 +376,31 @@ var kickUser = function (request, response) {
 };
 
 /**
+ * Logout the given user from the server.
+ */
+var logoutUser = function (request, response) {
+  if (request.params.authToken) {
+    // Delete the user from the authenticatedClients hash.
+    delete authenticatedClients[authToken];
+
+    // Destroy any socket connections associated with this authToken.
+    for (var clientId in io.sockets.sockets) {
+      if (io.sockets.sockets[clientId].authToken == request.params.authToken) {
+        delete io.sockets.sockets[clientId];
+        // Delete any channel entries for this clientId.
+        for (var channel in channels) {
+          delete channels[channel].sessionIds[clientId];
+        }
+      }
+    }
+    response.send({'status': 'success'});
+    return;
+  }
+  console.log('Failed to logout user, no authToken supplied');
+  response.send({'status': 'failed', 'error': 'missing authToken'});
+};
+
+/**
  * Get the list of Node.js sessionIds for a given uid.
  */
 var getNodejsSessionIdsFromUid = function (uid) {
@@ -378,6 +409,9 @@ var getNodejsSessionIdsFromUid = function (uid) {
     if (io.sockets.sockets[sessionId].uid == uid) {
       sessionIds.push(sessionId);
     }
+  }
+  if (backendSettings.debug) {
+    console.log('getNodejsSessionIdsFromUid', {uid: sessionIds});
   }
   return sessionIds;
 }
@@ -391,6 +425,9 @@ var getNodejsSessionIdsFromAuthToken = function (authToken) {
     if (io.sockets.sockets[sessionId].authToken == authToken) {
       sessionIds.push(sessionId);
     }
+  }
+  if (backendSettings.debug) {
+    console.log('getNodejsSessionIdsFromAuthToken', {authToken: sessionIds});
   }
   return sessionIds;
 }
@@ -720,17 +757,23 @@ var setupClientConnection = function (sessionId, authData) {
   }
   io.sockets.sockets[sessionId].authToken = authData.authToken;
   io.sockets.sockets[sessionId].uid = authData.uid;
-  if (backendSettings.debug) {
-    console.log("adding channels for uid " + authData.uid + ': ' + authData.channels.toString());
-  }
   for (var i in authData.channels) {
     channels[authData.channels[i]] = channels[authData.channels[i]] || {'sessionIds': {}};
     channels[authData.channels[i]].sessionIds[sessionId] = sessionId;
   }
-  if (authData.uid != 0 && authData.presenceUids) {
-    onlineUsers[authData.uid] = authData.presenceUids;
+  if (authData.uid != 0) { 
+    var sendPresenceChange = !onlineUsers[authData.uid];
+    onlineUsers[authData.uid] = authData.presenceUids || [];
+    if (sendPresenceChange) {
+      sendPresenceChangeNotification(authData.uid, 'online');
+    }
   }
   process.emit('client-authenticated', sessionId, authData);
+
+  if (backendSettings.debug) {
+    console.log("Added channels for uid " + authData.uid + ': ' + authData.channels.toString());
+    console.log('setupClientConnection', onlineUsers);
+  }
 };
 
 var server;
@@ -746,6 +789,7 @@ else {
 server.all('/nodejs/*', checkServiceKeyCallback);
 server.post(backendSettings.publishUrl, publishMessage);
 server.get(backendSettings.kickUserUrl, kickUser);
+server.get(backendSettings.logoutUserUrl, logoutUser);
 server.get(backendSettings.addUserToChannelUrl, addUserToChannel);
 server.get(backendSettings.removeUserFromChannelUrl, removeUserFromChannel);
 server.get(backendSettings.setUserPresenceListUrl, setUserPresenceList);
