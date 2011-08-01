@@ -2,8 +2,6 @@
  * Provides Node.js - Drupal integration. 
  *
  * This code is beta quality.
- *
- * Expect bugs, but not API changes as we prepare for 1.0 release.
  */
 
 var http = require('http'),
@@ -20,7 +18,8 @@ var channels = {},
     authenticatedClients = {},
     onlineUsers = {},
     presenceTimeoutIds = {},
-    tokenChannels = {};
+    tokenChannels = {},
+    extensions = [];
 
 /**
  * Socket lifetime, token-identified channels.
@@ -70,6 +69,7 @@ var channels = {},
 
 try {
   var backendSettings = vm.runInThisContext(fs.readFileSync(process.cwd() + '/nodejs.config.js'));
+  backendSettings.extensions = backendSettings.extensions || [];
 }
 catch (exception) {
   console.log("Failed to read config file, exiting: " + exception);
@@ -77,29 +77,20 @@ catch (exception) {
 }
 
 // Load server extensions
-var extensions = [];
-if (backendSettings.extensions && backendSettings.extensions.length) {
-  var num = backendSettings.extensions.length,
-    i,
-    extfn;
-  for (i = 0; i < num; i++) {
-    extfn = backendSettings.extensions[i];
-    try {
-      // Load JS files for extensions as modules, and collect the returned
-      // object for each extension.
-      extensions.push(require(__dirname + '/' + extfn));
-      console.log("Extension loaded: " + extfn);
-    }
-    catch (exception) {
-      console.log("Failed to load extension " + extfn + " [" + exception + "]");
-      process.exit(1);
-    }
+for (var i in backendSettings.extensions) {
+  try {
+    // Load JS files for extensions as modules, and collect the returned
+    // object for each extension.
+    extensions.push(require(__dirname + '/' + backendSettings.extensions[i]));
+    console.log("Extension loaded: " + backendSettings.extensions[i]);
+  }
+  catch (exception) {
+    console.log("Failed to load extension " + backendSettings.extensions[i] + " [" + exception + "]");
+    process.exit(1);
   }
 }
 
 // Initialize other default settings
-backendSettings.serverStatsUrl = '/nodejs/stats/server';
-backendSettings.getActiveChannelsUrl = '/nodejs/stats/channels';
 backendSettings.kickUserUrl = '/nodejs/user/kick/:uid';
 backendSettings.addUserToChannelUrl = '/nodejs/user/channel/add/:channel/:uid';
 backendSettings.removeUserFromChannelUrl = '/nodejs/user/channel/remove/:channel/:uid';
@@ -376,42 +367,6 @@ var kickUser = function (request, response) {
   }
   console.log('Failed to kick user, no uid supplied');
   response.send({'status': 'failed', 'error': 'missing uid'});
-};
-
-/**
- * Return a list of active channels.
- */
-var getActiveChannels = function (request, response) {
-  var channels = {};
-  for (var channel in channels) {
-    channels[channel] = channel;
-  }
-  if (backendSettings.debug) {
-    console.log('getActiveChannels: returning channels --> ' . channels.toString());
-  }
-  response.send(channels);
-};
-
-/**
- * Return summary info about the server.
- */
-var returnServerStats = function (request, response) {
-  var channels = [], clients = [];
-  for (var channel in channels) {
-    channels.push(channel);
-  }
-  for (var sessionId in authenticatedClients) {
-    clients.push({'user': authenticatedClients[sessionId], 'sessionId': sessionId});
-  }
-  var stats = {
-    'channels': channels,
-    'totalClientCount': io.sockets.sockets.length,
-    'authenticatedClients': clients
-  };
-  if (backendSettings.debug) {
-    console.log('returnServerStats: returning server stats --> ' + stats);
-  }
-  response.send(stats);
 };
 
 /**
@@ -790,8 +745,6 @@ else {
 }
 server.all('/nodejs/*', checkServiceKeyCallback);
 server.post(backendSettings.publishUrl, publishMessage);
-server.get(backendSettings.serverStatsUrl, returnServerStats);
-server.get(backendSettings.getActiveChannelsUrl, getActiveChannels);
 server.get(backendSettings.kickUserUrl, kickUser);
 server.get(backendSettings.addUserToChannelUrl, addUserToChannel);
 server.get(backendSettings.removeUserFromChannelUrl, removeUserFromChannel);
