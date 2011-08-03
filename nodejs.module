@@ -421,13 +421,27 @@ function nodejs_user_logout($account) {
 }
 
 /**
+ * Check if the given service key is valid.
+ */
+function nodejs_is_valid_service_key($service_key) {
+  return $service_key == variable_get('nodejs_service_key', '');
+}
+
+/**
  * Menu callback: handles all messages from Node.js server.
  */
 function nodejs_message_handler() {
-  if (isset($_POST['messageJson']) && $_POST['authKey']) {
-    $message = drupal_json_decode($_POST['messageJson']);
+  if (!isset($_POST['serviceKey']) || !nodejs_is_valid_service_key($_POST['serviceKey'])) {
+    drupal_json_output(array('error' => 'Invalid service key.'));
+    drupal_exit();
   }
 
+  if (!isset($_POST['messageJson'])) {
+    drupal_json_output(array('error' => 'No message.'));
+    drupal_exit();
+  }
+
+  $message = drupal_json_decode($_POST['messageJson']);
   switch ($message['messageType']) {
     case 'authenticate':
       $response = nodejs_auth_check($message);
