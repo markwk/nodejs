@@ -168,8 +168,7 @@ var authenticateClientCallback = function (response) {
   response.on('data', function (chunk) {
     if (response.statusCode == 404) {
       if (backendSettings.debug) {
-        console.log('Backend authentication url not found, tried using these options: ');
-        console.log(options);
+        console.log('Backend authentication url not found, full response info:', response);
       }
       else {
         console.log('Backend authentication url not found.');
