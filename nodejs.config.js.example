@@ -36,8 +36,8 @@
  *
  *  -- host: Host name of the Drupal site.
  *
- *  -- authPath: http path on which the Drupal node.js module listens for
- *  authentication check requests. Must end with /.
+ *  -- messagePath: http path on which the Drupal node.js module listens for
+ *  messages from the Node.js server process.
  *
  * extensions: An array of names of node.js modules that should be loaded as
  * extensions to the node.js server.
@@ -68,7 +68,7 @@ backendSettings = {
   'backend': {
     'port': 80,
     'host': 'your.drupal.sites.hostname',
-    'authPath': '/nodejs/auth/'
+    'messagePath': '/nodejs/message'
   },
   'extensions': [],
   'clientsCanWriteToChannels': false,
