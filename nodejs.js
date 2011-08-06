@@ -1,7 +1,7 @@
 
 (function ($) {
 
-Drupal.Nodejs = Drupal.Nodejs || {'callbacks': {}, 'socket': false, 'connectionSetupHandlers': {}};
+Drupal.Nodejs = Drupal.Nodejs || {'presenceCallbacks': {}, 'callbacks': {}, 'socket': false, 'connectionSetupHandlers': {}};
 
 Drupal.behaviors.nodejs = {
   attach: function (context, settings) {
@@ -19,6 +19,16 @@ Drupal.Nodejs.runCallbacks = function (message) {
       Drupal.Nodejs.callbacks[message.callback].callback(message);
     }
     catch (exception) {}
+  }
+  else if (message.presenceNotification != undefined) {
+    $.each(Drupal.Nodejs.presenceCallbacks, function () {
+      if ($.isFunction(this.callback)) {
+        try {
+          this.callback(message);
+        }
+        catch (exception) {}
+      }
+    });
   }
   else {
     $.each(Drupal.Nodejs.callbacks, function () {
