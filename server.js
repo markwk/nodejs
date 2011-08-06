@@ -276,7 +276,7 @@ var publishMessage = function (request, response) {
     try {
       var message = JSON.parse(chunk);
       if (backendSettings.debug) {
-        console.log('publishMessage: message --> ' + message);
+        console.log('publishMessage: message', message);
       }
     }
     catch (exception) {
