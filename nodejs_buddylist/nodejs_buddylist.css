@@ -1,0 +1,9 @@
+
+.nodejs-buddylist-offline {
+  background: url(icons/16/offline.png) no-repeat top right;
+}
+
+.nodejs-buddylist-online {
+  background: url(icons/16/available.png) no-repeat top right;
+}
+
