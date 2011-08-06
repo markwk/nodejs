@@ -4,7 +4,8 @@
  * Implements hook_init().
  */
 function nodejs_buddylist_init() {
-  global $user;
+  drupal_add_css(drupal_get_path('module', 'nodejs_buddylist') . '/nodejs_buddylist.css');
+  drupal_add_js(drupal_get_path('module', 'nodejs_buddylist') . '/nodejs_buddylist.js');
 }
 
 /**
@@ -76,7 +77,9 @@ function nodejs_buddylist_block_content($account) {
     $online_uids = nodejs_buddylist_get_online_uids(array_keys($buddies));
     $html = '<ul>';
     foreach ($buddies as $buddy) {
-      $html .= '<li>' . theme('username', array('account' => $buddy)) . '</li>';
+      $id = "nodejs-buddylist-uid-$buddy->uid";
+      $class = 'nodejs-buddylist-' . (in_array($buddy->uid, $online_uids) ? 'online' : 'offline');
+      $html .= '<li id="' . $id . '" class="' . $class . '">' . theme('username', array('account' => $buddy)) . '</li>';
     }
     $html .= '</ul>';
     return $html;
@@ -90,7 +93,10 @@ function nodejs_buddylist_block_content($account) {
  * Filter the given list of uids based on who is online.
  */
 function nodejs_buddylist_get_online_uids($uids) {
-  $online_uids = $uids;
-  return $uids;
+  return db_select('nodejs_presence', 'njp')
+    ->condition('njp.uid', $uids, 'IN')
+    ->fields('njp', array('uid'))
+    ->execute()
+    ->fetchCol();
 }
 
