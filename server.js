@@ -35,6 +35,13 @@ var channels = {},
  * tokenChannels[channelName] = tokenChannels[channelName] || {};
  * tokenChannels[channelName][token] = false;
  *
+ * 1.5. Drupal also sends a flag, anonymousOnly, with each content channel. The
+ *      flag is used by node.js to decide if it can broadcast content updates 
+ *      to all subscribed clients, or only anonymous clients. Some pieces of 
+ *      content are rendered differently for different users, so we can't just
+ *      broadcast them. For anon, where the content is the same, we broadcast,
+ *      for logged in users, we send a 'content changed' message, and leave it
+ *      up to client-side js to fetch the updated content.
  * 2. When a client connects with a channel token, server.js adds that client's
  *    socket sessionId to that channel, replacing false above.
  *
@@ -260,7 +267,7 @@ var toggleDebug = function (request, response) {
       response.send({debug: toggle.debug});
     }
     catch (exception) {
-      console.log('Invalid JSON "' + chunk + '": ' + exception);
+      console.log('toggleDebug: Invalid JSON "' + chunk + '"', exception);
       response.send({error: 'Invalid JSON, error: ' + e.toString()});
     }
   });
@@ -280,7 +287,7 @@ var publishMessage = function (request, response) {
       }
     }
     catch (exception) {
-      console.log('Invalid JSON "' + chunk + '": ' + exception);
+      console.log('publishMessage: Invalid JSON "' + chunk + '"',  exception);
       response.send({error: 'Invalid JSON, error: ' + exception.toString()});
       return;
     }
