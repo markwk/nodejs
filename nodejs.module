@@ -319,6 +319,7 @@ function nodejs_nodejs_user_channels($account) {
   if (variable_get('nodejs_enable_userchannel', TRUE) && $account->uid) {
     return array('nodejs_user_' . $account->uid);
   }
+  return array();
 }
 
 /**
@@ -378,7 +379,13 @@ function nodejs_auth_check($message) {
 
   if ($auth_user->nodejs_valid_auth_key) {
     // Get the list of channels I have access to.
-    $auth_user->channels = module_invoke_all('nodejs_user_channels', $auth_user);
+    $auth_user->channels = array();
+    foreach (module_implements('nodejs_user_channels') as $module) {
+      $function = $module . '_nodejs_user_channels';
+      foreach ($function($auth_user) as $channel) {
+        $auth_user->channels[] = $channel;
+      }
+    }
 
     // Get the list of users who can see presence notifications about me.
     $auth_user->presenceUids = array_unique(module_invoke_all('nodejs_user_presence_list', $auth_user));
@@ -386,7 +393,7 @@ function nodejs_auth_check($message) {
     $nodejs_config = nodejs_get_config(); 
     $auth_user->serviceKey = $nodejs_config['serviceKey'];
     drupal_add_http_header('NodejsServiceKey', $nodejs_config['serviceKey']);
-    module_invoke_all('nodejs_auth_check', $auth_user);
+    drupal_alter('nodejs_auth_user', $auth_user);
     if ($auth_user->uid) {
       nodejs_user_set_online($auth_user->uid);
     }
