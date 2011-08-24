@@ -30,10 +30,6 @@ function nodejs_buddylist_post_message($node) {
     exit;
   }
 
-  if (!chatroom_check_token($_POST['formToken'], $_POST['formId'])) {
-    exit;
-  }
-
   $message = array(
     'ccid' => $node->chat->nid,
     'uid' => $user->uid,
@@ -82,10 +78,10 @@ function nodejs_buddylist_start_chat() {
       'buddyUid' => $user->uid,
       'chatId' => $node->nid,
       'buddyUsername' => $user->name,
-      'formToken' => drupal_get_token('nodejs_buddylist_chat_' . $node->nid),
     ),
   );
   nodejs_send_message($message);
+
   $message = (object) array(
     'channel' => 'nodejs_user_' . $user->uid,
     'broadcast' => FALSE,
@@ -98,7 +94,6 @@ function nodejs_buddylist_start_chat() {
     ),
   );
   nodejs_send_message($message);
-
 }
 
 /**
@@ -244,3 +239,4 @@ function nodejs_buddylist_page_alter(&$page) {
     drupal_add_js($chatbar_settings, 'setting');
   }
 }
+
