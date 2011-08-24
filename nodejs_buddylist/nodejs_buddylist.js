@@ -41,7 +41,7 @@ Drupal.NodejsBuddylist.createChat = function (message) {
 
   var html = '<div id="nodejs-buddylist-chat-' + message.data.chatId + '" class="section-container">';
   html += '<a class="tab-button">' + message.data.buddyUsername + '</a>'; 
-  html += '<div class="chatbar-pane"><h2>Chat with ' + message.data.buddyUsername + '</h2>';
+  html += '<div class="chatbar-pane chatbar-chat"><h2>Chat with ' + message.data.buddyUsername + '</h2>';
   html += '<div class="chatbar-message-board"></div>';
   html += '<div class="chatbar-message-box"><input type="text" name="' + message.data.nid + '" /></div>';
   html += '</div></div>';

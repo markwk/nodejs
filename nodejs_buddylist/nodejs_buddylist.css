@@ -52,6 +52,14 @@
   display: none;
 }
 
+#chatbar div.chatbar-chat {
+  min-width: 250px;
+}
+
+#chatbar div.chatbar-chat input {
+  width: 230px;
+}
+
 #chatbar div.chatbar-pane h2 {
   margin: 0;
   padding: 5px 10px;
