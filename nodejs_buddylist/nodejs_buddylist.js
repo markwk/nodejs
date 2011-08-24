@@ -42,16 +42,30 @@ Drupal.NodejsBuddylist.createChat = function (message) {
   var html = '<div id="nodejs-buddylist-chat-' + message.data.chatId + '" class="section-container">';
   html += '<a class="tab-button">' + message.data.buddyUsername + '</a>'; 
   html += '<div class="chatbar-pane chatbar-chat"><h2>Chat with ' + message.data.buddyUsername + '</h2>';
-  html += '<div class="chatbar-message-board"></div>';
-  html += '<div class="chatbar-message-box"><input type="text" name="' + message.data.chatId + '" /></div>';
+  html += '<div id="nodejs-buddylist-message-board-' + message.data.chatId + '" class="chatbar-message-board"></div>';
+  html += '<div class="chatbar-message-box"><input id="nodejs-buddylist-message-box-' + message.data.chatId + '" type="text" name="' + message.data.chatId + '" /></div>';
   html += '</div></div>';
   $('#chatbar').append(html);
+
+  $('#nodejs-buddylist-message-box-' + message.data.chatId).keyup(function(e) {
+
+    var messageText = $(this).val().replace(/^\s+|\s+$/g, '');
+    var matches = this.id.match(/nodejs-buddylist-message-box-(\d+)/);
+
+    if (messageText && e.keyCode == 13 && !e.shiftKey && !e.ctrlKey) {
+      Drupal.NodejsBuddylist.postMessage(messageText, matches[1]);
+      $(this).val('').focus();
+    }
+    else {
+      return true;
+    }
+  });
 
   Drupal.NodejsBuddylist.popupChat(message.data.chatId);
 };
 
 Drupal.NodejsBuddylist.updateChat = function (message) {
-  alert(message);
+  $('#nodejs-buddylist-message-board-' + message.data.chatId).append(message.data.html);
 };
 
 Drupal.NodejsBuddylist.chatWithBuddyExists = function (buddyUid) {
