@@ -134,14 +134,14 @@ function nodejs_buddylist_block_view($delta = '') {
 /**
  * Get the content for the buddy list block.
  */
-function nodejs_buddylist_block_content($account) {
+function nodejs_buddylist_block_content($account, $id_prefix='nodejs-buddylist-uid-') {
   $buddies = nodejs_buddylist_user_list($account);
   if ($buddies) {
     $online_uids = nodejs_buddylist_get_online_uids(array_keys($buddies));
     $html = '<ul>';
     $chat_enabled = module_exists('chatroom_nodejs');
     foreach ($buddies as $buddy) {
-      $id = "nodejs-buddylist-uid-$buddy->uid";
+      $id = $id_prefix . $buddy->uid;
       $class = 'nodejs-buddylist-' . (in_array($buddy->uid, $online_uids) ? 'online' : 'offline');
       $chat_button = '';
       if ($chat_enabled && $class == 'nodejs-buddylist-online') {
@@ -188,9 +188,9 @@ function nodejs_buddylist_page_alter(&$page) {
   global $user;
 
   if (user_access('use nodejs_buddylist')) {
-    $buddy_list_html = nodejs_buddylist_block_content($user);
+    $buddy_list_html = nodejs_buddylist_block_content($user, 'nodejs-chatbar-uid-');
   
-    $chatbar_settings = array('chatbar_settings' => '<div id="chatbar"><div id="buddy-list"><a id="buddy-toggle" class="tab-button">' . t('Buddys') . '</a><div class="chatbar-pane"><h2>' . t('Your Buddylist') . '</h2>' . $buddy_list_html . '</div></div></div>');
+    $chatbar_settings = array('chatbar_settings' => '<div id="chatbar"><div id="buddy-list" class="section-container"><a id="buddy-toggle" class="tab-button">' . t('Buddys') . '</a><div class="chatbar-pane"><h2>' . t('Your Buddylist') . '</h2>' . $buddy_list_html . '</div></div></div>');
     drupal_add_js($chatbar_settings, 'setting');
   }
 }

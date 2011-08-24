@@ -22,13 +22,19 @@
   padding: 0 3%;*/
 }
 
+#chatbar div.section-container {
+  float: right;
+  border-left: 1px solid #e3e2e2;
+  border-right: 1px solid #F6F6F2;
+}
+
 #chatbar a.tab-button {
   display: block;
-  float: right;
+  
   padding: 0 15px;
   height: 100%;
   line-height: 30px;
-  border-left: 1px solid #e3e2e2;
+
 }
 
 #chatbar a.tab-button:hover {
