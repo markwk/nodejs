@@ -65,22 +65,24 @@ Drupal.NodejsBuddylist.createChat = function (message) {
 };
 
 Drupal.NodejsBuddylist.updateChat = function (message) {
-  var chatBoard = $('#nodejs-buddylist-message-board-' + message.data.chatId);
-  var container = $('#nodejs-buddylist-chat-' + message.data.chatId);
-
+  Drupal.NodejsBuddylist.popupChat(message.data.chatId);
   $(message.data.html).hide().appendTo('#nodejs-buddylist-message-board-' + message.data.chatId).fadeIn(200);
-
-  if (container.children('.chatbar-pane').css('display') == 'none') {
-    container.children('.tab-button').first().click();
-  }
-  
-  chatBoard.animate({ scrollTop: $('#nodejs-buddylist-message-board-' + message.data.chatId).attr("scrollHeight") }, 200);
+  $('#nodejs-buddylist-message-board-' + message.data.chatId).animate({ scrollTop: $('#nodejs-buddylist-message-board-' + message.data.chatId).attr("scrollHeight") }, 200);
 };
 
 Drupal.NodejsBuddylist.chatWithBuddyExists = function (buddyUid) {
   for (var i in Drupal.NodejsBuddylist.chats) {
     if (Drupal.NodejsBuddylist.chats[i].buddyUid == buddyUid) {
       return true;
+    }
+  }
+  return false;
+};
+
+Drupal.NodejsBuddylist.getChatIdFromBuddyId = function (buddyUid) {
+  for (var i in Drupal.NodejsBuddylist.chats) {
+    if (Drupal.NodejsBuddylist.chats[i].buddyUid == buddyUid) {
+      return i;
     }
   }
   return false;
@@ -107,7 +109,7 @@ Drupal.behaviors.buddyList = {
       e.stopPropagation();
       var matches = this.href.match(/start-chat-(\d+)/);
       if (Drupal.NodejsBuddylist.chatWithBuddyExists(matches[1])) {
-        Drupal.NodejsBuddylist.popupChat(matches[1]);
+        Drupal.NodejsBuddylist.popupChat(Drupal.NodejsBuddylist.getChatIdFromBuddyId(matches[1]));
       }
       else {
         $.ajax({
