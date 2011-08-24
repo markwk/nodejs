@@ -107,7 +107,7 @@ function nodejs_buddylist_start_chat() {
 function nodejs_buddylist_theme() {
   return array(
     'nodejs_buddylist_chat_button' => array(
-      'variables' => array('buddy' => NULL),
+      'variables' => array('buddy' => NULL, 'online' => NULL),
     ),
   );
 }
@@ -194,10 +194,12 @@ function nodejs_buddylist_block_content($account, $id_prefix='nodejs-buddylist-u
       $class = 'nodejs-buddylist-' . (in_array($buddy->uid, $online_uids) ? 'online' : 'offline');
       $chat_button = '';
       if ($chat_enabled && $class == 'nodejs-buddylist-online') {
-        $chat_button = theme('nodejs_buddylist_chat_button', array('buddy' => $buddy));
+        $chat_button = theme('nodejs_buddylist_chat_button', array('buddy' => $buddy, 'online' => TRUE));
+      }
+      else {
+        $chat_button = theme('nodejs_buddylist_chat_button', array('buddy' => $buddy, 'online' => FALSE));
       }
       $html .= '<li id="' . $id . '" class="' . $class . '">';
-      // $html .= theme('user_picture', array('account' => $buddy));
       $html .= theme('username', array('account' => $buddy)) . $chat_button;
       $html .= '</li>';
     }
@@ -214,7 +216,8 @@ function nodejs_buddylist_block_content($account, $id_prefix='nodejs-buddylist-u
  */
 function theme_nodejs_buddylist_chat_button($variables) {
   $buddy = $variables['buddy'];
-  return ' | <a class="nodejs-buddylist-start-chat-link" href="#start-chat-' . $buddy->uid . '">' . t('Chat') . '</a>';
+  $class = $variables['online'] ? 'nodejs-buddylist-online' : 'nodejs-buddylist-offline';
+  return '<span class="chat-link-wrapper ' . $class . '"> | <a class="nodejs-buddylist-start-chat-link" href="#start-chat-' . $buddy->uid . '">' . t('Chat') . '</a></span>';
 }
 
 /**
