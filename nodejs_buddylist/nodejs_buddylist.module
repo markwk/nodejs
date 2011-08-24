@@ -81,6 +81,7 @@ function nodejs_buddylist_start_chat() {
       'buddyUid' => $user->uid,
       'chatId' => $node->nid,
       'buddyUsername' => $user->name,
+      'creatorUid' => $user->uid,
     ),
   );
   nodejs_send_message($message);
