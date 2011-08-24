@@ -239,7 +239,8 @@ function nodejs_buddylist_page_alter(&$page) {
   if (user_access('use nodejs_buddylist')) {
     $buddy_list_html = nodejs_buddylist_block_content($user, 'nodejs-chatbar-uid-');
   
-    $chatbar_settings = array('chatbar_settings' => '<div id="chatbar"><div id="buddy-list" class="section-container"><a id="buddy-toggle" class="tab-button">' . t('Buddys') . '</a><div class="chatbar-pane"><h2>' . t('Your Buddylist') . '</h2>' . $buddy_list_html . '</div></div></div>');
+    $chatbar_settings = array('chatbar_settings' => '<div id="chatbar"><div id="buddy-list" class="section-container"><a id="buddy-toggle" class="tab-button">'
+        . t('Buddys') . '</a><div class="chatbar-pane"><h2>' . t('Your Buddylist') . '</h2>' . $buddy_list_html . '</div></div></div>');
     drupal_add_js($chatbar_settings, 'setting');
   }
 }

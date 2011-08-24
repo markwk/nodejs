@@ -15,7 +15,7 @@
 	border: 1px solid #e3e2e2;
 	border-bottom: none;
 	margin: 0;
-  height: 30px;
+  height: 35px;
   width: 100%;
   font-size: 87.5%;
 /*  width: 94%;
@@ -31,20 +31,26 @@
 #chatbar a.tab-button {
   display: block;
   
-  padding: 0 15px;
+  padding: 0 15px 0 47px;
+  font-size: 115%;
   height: 100%;
-  line-height: 30px;
+  line-height: 35px;
+
+	background-image: url(icons/user.png);
+  background-position: 15px center;
+  background-repeat: no-repeat;
+
 
 }
 
 #chatbar a.tab-button:hover {
-  background: #ebebeb;
+  background-color: #ebebeb;
 }
 
 #chatbar div.chatbar-pane {
   position: absolute;
   right: 0;
-  bottom: 31px;
+  bottom: 36px;
   margin: 0;
   background: #fff;
  	border: 1px solid #e3e2e2;
@@ -72,7 +78,9 @@
 }
 
 #buddy-toggle {
-	
+	background-image: url(icons/group.png);
+  background-position: center left;
+  background-repeat: no-repeat;
 }
 
 
