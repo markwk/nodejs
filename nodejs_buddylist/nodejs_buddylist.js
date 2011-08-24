@@ -109,7 +109,9 @@ Drupal.behaviors.buddyList = {
       e.stopPropagation();
       var matches = this.href.match(/start-chat-(\d+)/);
       if (Drupal.NodejsBuddylist.chatWithBuddyExists(matches[1])) {
-        Drupal.NodejsBuddylist.popupChat(Drupal.NodejsBuddylist.getChatIdFromBuddyId(matches[1]));
+        var chatId = Drupal.NodejsBuddylist.getChatIdFromBuddyId(matches[1]);
+        Drupal.NodejsBuddylist.popupChat(chatId);
+        $('#nodejs-buddylist-message-box-' + chatId).focus();
       }
       else {
         $.ajax({
@@ -154,7 +156,6 @@ Drupal.NodejsBuddylist.clickChat = function (button) {
   $('#chatbar').children().each(function(index, chatContainer) {
     var chatbarPane = $(chatContainer).children('.chatbar-pane');
     chatbarPane.offset({'left' : $(chatContainer).offset().left});
-    
   });
 
   sibling_pane.slideToggle(100, function() {
