@@ -5,16 +5,26 @@ Drupal.NodejsBuddylist = Drupal.NodejsBuddyList || {'chats': {}};
 Drupal.Nodejs.presenceCallbacks.buddyList = {
   callback: function (message) {
     if (message.presenceNotification.event == 'offline') {
-      $('#nodejs-buddylist-uid-' + message.presenceNotification.uid).removeClass('nodejs-buddylist-online');
-      $('#nodejs-buddylist-uid-' + message.presenceNotification.uid).addClass('nodejs-buddylist-offline');
-      $('#nodejs-chatbar-uid-' + message.presenceNotification.uid).removeClass('nodejs-buddylist-online');
-      $('#nodejs-chatbar-uid-' + message.presenceNotification.uid).addClass('nodejs-buddylist-offline');
+      $('#nodejs-buddylist-uid-' + message.presenceNotification.uid)
+        .removeClass('nodejs-buddylist-online')
+        .addClass('nodejs-buddylist-offline');
+      $('#nodejs-chatbar-uid-' + message.presenceNotification.uid)
+        .removeClass('nodejs-buddylist-online')
+        .addClass('nodejs-buddylist-offline');
+      $('#nodejs-chatbar-uid-' + message.presenceNotification.uid).children('.chat-link-wrapper').first()
+        .removeClass('chat-link-wrapper-online')
+        .addClass('chat-link-wrapper-offline');
     }
     else {
-      $('#nodejs-buddylist-uid-' + message.presenceNotification.uid).addClass('nodejs-buddylist-online');
-      $('#nodejs-buddylist-uid-' + message.presenceNotification.uid).removeClass('nodejs-buddylist-offline');
-      $('#nodejs-chatbar-uid-' + message.presenceNotification.uid).addClass('nodejs-buddylist-online');
-      $('#nodejs-chatbar-uid-' + message.presenceNotification.uid).removeClass('nodejs-buddylist-offline');
+      $('#nodejs-buddylist-uid-' + message.presenceNotification.uid)
+        .addClass('nodejs-buddylist-online')
+        .removeClass('nodejs-buddylist-offline');
+      $('#nodejs-chatbar-uid-' + message.presenceNotification.uid)
+        .addClass('nodejs-buddylist-online')
+        .removeClass('nodejs-buddylist-offline');
+      $('#nodejs-chatbar-uid-' + message.presenceNotification.uid).children('.chat-link-wrapper').first()
+        .addClass('chat-link-wrapper-online')
+        .removeClass('chat-link-wrapper-offline');
     }
   }
 };

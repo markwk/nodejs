@@ -216,7 +216,7 @@ function nodejs_buddylist_block_content($account, $id_prefix='nodejs-buddylist-u
  */
 function theme_nodejs_buddylist_chat_button($variables) {
   $buddy = $variables['buddy'];
-  $class = $variables['online'] ? 'nodejs-buddylist-online' : 'nodejs-buddylist-offline';
+  $class = $variables['online'] ? 'chat-link-wrapper-online' : 'chat-link-wrapper-offline';
   return '<span class="chat-link-wrapper ' . $class . '"> | <a class="nodejs-buddylist-start-chat-link" href="#start-chat-' . $buddy->uid . '">' . t('Chat') . '</a></span>';
 }
 

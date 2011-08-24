@@ -7,6 +7,10 @@
   background: url(icons/16/available.png) no-repeat center right;
 }
 
+.chat-link-wrapper-offline {
+  display: none;
+}
+
 #chatbar {
 	position: fixed;
 	bottom: 0; left: 0;
