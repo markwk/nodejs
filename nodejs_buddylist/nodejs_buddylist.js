@@ -47,10 +47,6 @@ Drupal.NodejsBuddylist.createChat = function (message) {
   html += '</div></div>';
   $('#chatbar').append(html);
 
-  if (message.data.creatorUid) {
-    $('#nodejs-buddylist-message-box-' + message.data.chatId).focus();
-  }
-
   $('#nodejs-buddylist-message-box-' + message.data.chatId).keyup(function(e) {
 
     var messageText = $(this).val().replace(/^\s+|\s+$/g, '');
@@ -66,6 +62,9 @@ Drupal.NodejsBuddylist.createChat = function (message) {
   });
 
   Drupal.NodejsBuddylist.popupChat(message.data.chatId);
+  if (message.data.creatorUid > 0) {
+    $('#nodejs-buddylist-message-box-' + message.data.chatId).focus();
+  }
 };
 
 Drupal.NodejsBuddylist.updateChat = function (message) {
