@@ -21,7 +21,7 @@ Drupal.Nodejs.presenceCallbacks.buddyList = {
 
 Drupal.Nodejs.callbacks.nodejsBuddyListStartChat = {
   callback: function (message) {
-    if ($('#nodejs-buddylist-chat-' + message.data.nid).length == 0) {
+    if ($('#nodejs-buddylist-chat-' + message.data.chatId).length == 0) {
       Drupal.NodejsBuddylist.createChat(message);
     }
   }
@@ -37,14 +37,13 @@ Drupal.Nodejs.callbacks.nodejsBuddyAddMessage = {
 };
 
 Drupal.NodejsBuddylist.createChat = function (message) {
-  Drupal.NodejsBuddylist.chats[message.data.chatId].buddyUid = message.data.buddyUid;
-  Drupal.NodejsBuddylist.chats[message.data.chatId].formToken = message.data.formToken;
+  Drupal.NodejsBuddylist.chats[message.data.chatId] = {buddyUid: message.data.buddyUid};
 
   var html = '<div id="nodejs-buddylist-chat-' + message.data.chatId + '" class="section-container">';
   html += '<a class="tab-button">' + message.data.buddyUsername + '</a>'; 
   html += '<div class="chatbar-pane"><h2>Chat with ' + message.data.buddyUsername + '</h2>';
   html += '<div class="chatbar-message-board"></div>';
-  html += '<div class="chatbar-message-box"><input type="text" name="' + message.data.nid + '" /></div>';
+  html += '<div class="chatbar-message-box"><input type="text" name="' + message.data.chatId + '" /></div>';
   html += '</div></div>';
   $('#chatbar').append(html);
 
@@ -109,7 +108,6 @@ Drupal.NodejsBuddylist.postMessage = function(message, chatId) {
     data: {
       message: message,
       anonName: '',
-      formToken: Drupal.NodejsBuddylist.chats[chatId].formToken,
       formId: 'nodejs_buddylist_chat_' + chatId
     }
   })
