@@ -60,6 +60,7 @@ function nodejs_buddylist_start_chat() {
   $node->uid = $user->uid;
   $node->max_users = 2;
   $node->private = TRUE;
+  $node->promote = 0;
   $node->language = LANGUAGE_NONE;
   node_object_prepare($node);
   node_save($node);
