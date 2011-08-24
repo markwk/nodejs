@@ -62,6 +62,23 @@
   min-width: 250px;
 }
 
+#chatbar div.chatbar-chat .chatbar-message-box {
+  text-align: center;
+  border-top: 1px solid #e3e2e2;
+}
+
+#chatbar div.chatbar-chat .chatbar-message-board {
+  min-height: 150px;
+  max-height: 450px;
+  overflow: auto;
+  padding: 5px;
+
+}
+
+#chatbar div.chatbar-chat .chatbar-message-board p {
+  display: inline;
+}
+
 #chatbar div.chatbar-chat input {
   width: 230px;
 }

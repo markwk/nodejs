@@ -65,7 +65,16 @@ Drupal.NodejsBuddylist.createChat = function (message) {
 };
 
 Drupal.NodejsBuddylist.updateChat = function (message) {
-  $('#nodejs-buddylist-message-board-' + message.data.chatId).append(message.data.html);
+  var chatBoard = $('#nodejs-buddylist-message-board-' + message.data.chatId);
+  var container = $('#nodejs-buddylist-chat-' + message.data.chatId);
+
+  $(message.data.html).hide().appendTo('#nodejs-buddylist-message-board-' + message.data.chatId).fadeIn(200);
+
+  if (container.children('.chatbar-pane').css('display') == 'none') {
+    container.children('.tab-button').first().click();
+  }
+  
+  chatBoard.animate({ scrollTop: $('#nodejs-buddylist-message-board-' + message.data.chatId).attr("scrollHeight") }, 200);
 };
 
 Drupal.NodejsBuddylist.chatWithBuddyExists = function (buddyUid) {
