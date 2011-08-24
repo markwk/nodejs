@@ -45,11 +45,25 @@ function nodejs_buddylist_start_chat() {
     'type' => 'startChat',
     'callback' => 'nodejsBuddyListStartChat',
     'data' => (object) array(
-      'buddyUid' => $buddy->uid,
+      'buddyUid' => $user->uid,
       'chatId' => $node->nid,
+      'buddyUsername' => $user->name,
     ),
   );
   nodejs_send_message($message);
+  $message = (object) array(
+    'channel' => 'nodejs_user_' . $user->uid,
+    'broadcast' => FALSE,
+    'type' => 'startChat',
+    'callback' => 'nodejsBuddyListStartChat',
+    'data' => (object) array(
+      'buddyUid' => $buddy->uid,
+      'chatId' => $node->nid,
+      'buddyUsername' => $buddy->name,
+    ),
+  );
+  nodejs_send_message($message);
+
 }
 
 /**

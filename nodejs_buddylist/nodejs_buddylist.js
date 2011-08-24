@@ -1,5 +1,7 @@
 (function ($) {
 
+Drupal.NodejsBuddylist = Drupal.NodejsBuddyList || {'chats': {}};
+
 Drupal.Nodejs.presenceCallbacks.buddyList = {
   callback: function (message) {
     if (message.presenceNotification.event == 'offline') {
@@ -19,8 +21,47 @@ Drupal.Nodejs.presenceCallbacks.buddyList = {
 
 Drupal.Nodejs.callbacks.nodejsBuddyListStartChat = {
   callback: function (message) {
-    //alert(message);
+    if ($('#nodejs-buddylist-chat-' + message.data.nid).length == 0) {
+      Drupal.NodejsBuddylist.createChat(message);
+    }
   }
+};
+
+Drupal.Nodejs.callbacks.nodejsBuddyAddMessage = {
+  callback: function (message) {
+    if ($('#nodejs-buddylist-chat-' + message.data.chatId).length == 0) {
+      Drupal.NodejsBuddylist.createChat(message);
+    }
+    Drupal.NodejsBuddylist.updateChat(message);
+  }
+};
+
+Drupal.NodejsBuddylist.createChat = function (message) {
+  Drupal.NodejsBuddylist.chats[message.data.chatId] = message.data.buddyUid;
+
+  var html = '<div id="nodejs-buddylist-chat-' + message.data.nid + '" class="section-container">';
+  html += '<a class="tab-button">' + message.data.buddyUsername + '</a>'; 
+  html += '<div class="chatbar-pane"><h2>Chat with ' + message.data.buddyUsername + '</h2></div>';
+  html += '<div class="chatbar-message-board"></div>';
+  html += '<div class="chatbar-message-box"><input type="text" name="' + message.data.nid + '" /></div>';
+  html += '</div>';
+  $('#chatbar').append(html);
+};
+
+Drupal.NodejsBuddylist.updateChat = function (message) {
+};
+
+Drupal.NodejsBuddylist.chatWithBuddyExists = function (buddyUid) {
+  for (var i in Drupal.NodejsBuddylist.chats) {
+    if (Drupal.NodejsBuddylist.chats[i] == buddyUid) {
+      return true;
+    }
+  }
+  return false;
+};
+
+Drupal.NodejsBuddylist.popupChat = function (chatId) {
+  // toggle chat id.
 };
 
 /**
@@ -29,7 +70,7 @@ Drupal.Nodejs.callbacks.nodejsBuddyListStartChat = {
 Drupal.behaviors.buddyList = {
   attach: function (context, settings) {
     $('body').append(Drupal.settings.chatbar_settings);
-    $('#chatbar .tab-button').click(function () {
+    $('#chatbar .tab-button').live('click', function () {
       var sibling_pane = $(this).siblings('.chatbar-pane');
       var container = $(this).parent();
 
@@ -49,13 +90,18 @@ Drupal.behaviors.buddyList = {
       e.preventDefault();
       e.stopPropagation();
       var matches = this.href.match(/start-chat-(\d+)/);
-      $.ajax({
-        type: 'POST',
-        url: Drupal.settings.basePath + 'nodejs-buddylist/start-chat',
-        dataType: 'json',
-        success: function () {},
-        data: {uid: matches[1]}
-      });
+      if (Drupal.NodejsBuddylist.chatWithBuddyExists(matches[1])) {
+        Drupal.NodejsBuddylist.popupChat(matches[1]);
+      }
+      else {
+        $.ajax({
+          type: 'POST',
+          url: Drupal.settings.basePath + 'nodejs-buddylist/start-chat',
+          dataType: 'json',
+          success: function () {},
+          data: {uid: matches[1]}
+        });
+      }
     });
   }
 };
