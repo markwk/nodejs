@@ -40,7 +40,7 @@ function nodejs_buddylist_start_chat() {
   drupal_write_record('chatroom_chat_user', $user_data);
 
   $message = (object) array(
-    'channel' => 'user_' . $buddy->uid,
+    'channel' => 'nodejs_user_' . $buddy->uid,
     'broadcast' => FALSE,
     'type' => 'startChat',
     'callback' => 'nodejsBuddyListStartChat',
@@ -148,6 +148,7 @@ function nodejs_buddylist_block_content($account) {
         $chat_button = theme('nodejs_buddylist_chat_button', array('buddy' => $buddy));
       }
       $html .= '<li id="' . $id . '" class="' . $class . '">';
+      // $html .= theme('user_picture', array('account' => $buddy));
       $html .= theme('username', array('account' => $buddy)) . $chat_button;
       $html .= '</li>';
     }
@@ -178,3 +179,18 @@ function nodejs_buddylist_get_online_uids($uids) {
     ->fetchCol();
 }
 
+/**
+ * Implements hook_page_alter().
+ *
+ * @todo make it themable.
+ */
+function nodejs_buddylist_page_alter(&$page) {
+  global $user;
+
+  if (user_access('use nodejs_buddylist')) {
+    $buddy_list_html = nodejs_buddylist_block_content($user);
+  
+    $chatbar_settings = array('chatbar_settings' => '<div id="chatbar"><div id="buddy-list"><a id="buddy-toggle" class="tab-button">' . t('Buddys') . '</a><div class="chatbar-pane"><h2>' . t('Your Buddylist') . '</h2>' . $buddy_list_html . '</div></div></div>');
+    drupal_add_js($chatbar_settings, 'setting');
+  }
+}

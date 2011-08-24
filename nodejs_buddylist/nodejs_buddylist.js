@@ -15,7 +15,7 @@ Drupal.Nodejs.presenceCallbacks.buddyList = {
 
 Drupal.Nodejs.callbacks.nodejsBuddyListStartChat = {
   callback: function (message) {
-    alert(message);
+    //alert(message);
   }
 };
 
@@ -24,6 +24,10 @@ Drupal.Nodejs.callbacks.nodejsBuddyListStartChat = {
  */
 Drupal.behaviors.buddyList = {
   attach: function (context, settings) {
+    $('body').append(Drupal.settings.chatbar_settings);
+    $('#chatbar .tab-button').click(function () {
+      $(this).siblings('.chatbar-pane').slideToggle(100);
+    });
     $('.nodejs-buddylist-start-chat-link').click(function (e) {
       e.preventDefault();
       e.stopPropagation();
