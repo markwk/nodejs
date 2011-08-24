@@ -11,7 +11,41 @@ function nodejs_buddylist_menu() {
       'page arguments' => array(2),
       'access arguments' => array('create chats'),
     ),
+    'nodejs-buddylist/post-message/%node' => array(
+      'title' => 'post a message',
+      'page callback' => 'nodejs_buddylist_post_message',
+      'page arguments' => array(2),
+      'access arguments' => array('access chats'),
+    ),
   );
+}
+
+/**
+ * Posted messages are handled here.
+ */
+function nodejs_buddylist_post_message($node) {
+  global $user;
+
+  if (!isset($_POST['message'])) {
+    exit;
+  }
+
+  if (!chatroom_check_token($_POST['formToken'], $_POST['formId'])) {
+    exit;
+  }
+
+  $message = array(
+    'ccid' => $node->chat->nid,
+    'uid' => $user->uid,
+    'msg' => $_POST['message'],
+    'sid' => session_id(),
+    'msg_type' => 'message',
+    'recipient_uid' => 0,
+    'modified' => chatroom_get_utc_timestamp(),
+    'anon_name' => '',
+    'js_callback' => 'nodejsBuddyAddMessage',
+  );
+  chatroom_chat_save_message($message, $node);
 }
 
 /**
@@ -48,6 +82,7 @@ function nodejs_buddylist_start_chat() {
       'buddyUid' => $user->uid,
       'chatId' => $node->nid,
       'buddyUsername' => $user->name,
+      'formToken' => drupal_get_token('nodejs_buddylist_chat_' . $node->nid),
     ),
   );
   nodejs_send_message($message);

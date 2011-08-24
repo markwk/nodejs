@@ -37,7 +37,8 @@ Drupal.Nodejs.callbacks.nodejsBuddyAddMessage = {
 };
 
 Drupal.NodejsBuddylist.createChat = function (message) {
-  Drupal.NodejsBuddylist.chats[message.data.chatId] = message.data.buddyUid;
+  Drupal.NodejsBuddylist.chats[message.data.chatId].buddyUid = message.data.buddyUid;
+  Drupal.NodejsBuddylist.chats[message.data.chatId].formToken = message.data.formToken;
 
   var html = '<div id="nodejs-buddylist-chat-' + message.data.nid + '" class="section-container">';
   html += '<a class="tab-button">' + message.data.buddyUsername + '</a>'; 
@@ -49,11 +50,12 @@ Drupal.NodejsBuddylist.createChat = function (message) {
 };
 
 Drupal.NodejsBuddylist.updateChat = function (message) {
+  alert(message);
 };
 
 Drupal.NodejsBuddylist.chatWithBuddyExists = function (buddyUid) {
   for (var i in Drupal.NodejsBuddylist.chats) {
-    if (Drupal.NodejsBuddylist.chats[i] == buddyUid) {
+    if (Drupal.NodejsBuddylist.chats[i].buddyUid == buddyUid) {
       return true;
     }
   }
@@ -105,6 +107,21 @@ Drupal.behaviors.buddyList = {
     });
   }
 };
+
+Drupal.NodejsBuddylist.postMessage = function(message, chatId) {
+  $.ajax({
+    type: 'POST',
+    url: Drupal.settings.basePath + 'nodejs-buddylist/post-message/' + chatId,
+    dataType: 'json',
+    success: function () {},
+    data: {
+      message: message,
+      anonName: '',
+      formToken: Drupal.NodejsBuddylist.chats[chatId].formToken,
+      formId: 'nodejs_buddylist_chat_' + chatId
+    }
+  })
+}
 
 })(jQuery);
 
