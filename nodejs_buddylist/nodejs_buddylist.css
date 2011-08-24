@@ -77,10 +77,9 @@
 
 }
 
-#buddy-toggle {
+#chatbar #buddy-toggle {
 	background-image: url(icons/group.png);
-  background-position: center left;
-  background-repeat: no-repeat;
+  padding: 0 15px 0 55px;
 }
 
 
