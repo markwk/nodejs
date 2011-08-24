@@ -66,8 +66,11 @@ function nodejs_buddylist_start_chat() {
 
   $user_data = array('uid' => $user->uid, 'nid' => $node->nid);
   drupal_write_record('chatroom_chat_user', $user_data);
+  nodejs_add_user_to_channel($user->uid, 'chatroom_chat_' . $node->nid);
+
   $user_data = array('uid' => $buddy->uid, 'nid' => $node->nid);
   drupal_write_record('chatroom_chat_user', $user_data);
+  nodejs_add_user_to_channel($buddy->uid, 'chatroom_chat_' . $node->nid);
 
   $message = (object) array(
     'channel' => 'nodejs_user_' . $buddy->uid,
