@@ -3,7 +3,7 @@
 /**
  * Kick a user off the node.js server.
  *
- * @param mixed $uid 
+ * @param mixed $uid
  */
 function nodejs_kick_user($uid) {
   $response = Nodejs::kickUser($uid);
@@ -51,7 +51,7 @@ function nodejs_set_user_presence_list($uid, array $uids) {
 
 /**
  * Broadcast a message to all clients.
- * 
+ *
  * @param string $subject
  * @param string $body
  */
@@ -84,7 +84,7 @@ function nodejs_send_channel_message($channel, $subject, $body) {
 
 /**
  * Send a message to given user.
- * 
+ *
  * @param int $uid
  * @param string $subject
  * @param string $body
@@ -105,7 +105,8 @@ function nodejs_send_user_message($uid, $subject, $body) {
 /**
  * Send a message to multiple users.
  *
- * @param string|array $uids A list of uid seperated by comma (,) or an array of uids
+ * @param string|array $uids
+ *   A list of uid seperated by comma (,) or an array of uids
  * @param string $subject
  * @param string $body
  */
@@ -219,7 +220,7 @@ function nodejs_menu() {
 
 /**
  * Get a list of active channels from the node.js server.
- * 
+ *
  * @access public
  * @return array
  */
@@ -237,9 +238,9 @@ function nodejs_get_channels() {
 
 /**
  * Form callback, add a user to a channel.
- * 
- * @param mixed $form 
- * @param mixed $form_state 
+ *
+ * @param mixed $form
+ * @param mixed $form_state
  * @return array
  */
 function nodejs_add_user_to_channel_form($form, $form_state) {
@@ -263,7 +264,7 @@ function nodejs_add_user_to_channel_form($form, $form_state) {
 
 /**
  * Form submit callback - add a user to a channel on the Node.js server.
- * 
+ *
  * @param mixed $form
  * @param mixed $form_state
  */
@@ -279,7 +280,7 @@ function nodejs_add_user_to_channel_form_submit($form, &$form_state) {
 
 /**
  * Form validate callback - add a user to a channel on the Node.js server.
- * 
+ *
  * @param mixed $form
  * @param mixed $form_state
  * @return void
@@ -296,8 +297,8 @@ function nodejs_add_user_to_channel_form_validate($form, &$form_state) {
 
 /**
  * Enqueue a message for sending at the end of the request.
- * 
- * @param StdClass $message 
+ *
+ * @param StdClass $message
  */
 function nodejs_enqueue_message(StdClass $message) {
   Nodejs::enqueueMessage($message);
@@ -305,8 +306,8 @@ function nodejs_enqueue_message(StdClass $message) {
 
 /**
  * Send a message immediately.
- * 
- * @param StdClass $message 
+ *
+ * @param StdClass $message
  */
 function nodejs_send_message(StdClass $message) {
   return Nodejs::sendMessage($message);
@@ -383,7 +384,7 @@ function nodejs_auth_check($message) {
     // Get the list of users who can see presence notifications about me.
     $auth_user->presenceUids = array_unique(module_invoke_all('nodejs_user_presence_list', $auth_user));
 
-    $nodejs_config = nodejs_get_config(); 
+    $nodejs_config = nodejs_get_config();
     $auth_user->serviceKey = $nodejs_config['serviceKey'];
     drupal_add_http_header('NodejsServiceKey', $nodejs_config['serviceKey']);
     module_invoke_all('nodejs_auth_check', $auth_user);
@@ -440,8 +441,10 @@ function nodejs_get_config() {
 /**
  * Get the URL of a Node.js callback.
  *
- * @param array $config the result of nodejs_get_config()
- * @param string $callback the path to call on Node.js server (without leading /)
+ * @param array $config
+ *   The result of nodejs_get_config().
+ * @param string $callback
+ *   The path to call on Node.js server (without leading /).
  * @return string
  */
 function nodejs_get_url($config, $callback = '') {
@@ -474,9 +477,9 @@ function nodejs_remove_user_from_channel($uid, $channel) {
 
 /**
  * Add a user to a channel.
- * 
- * @param mixed $uid 
- * @param mixed $channel 
+ *
+ * @param mixed $uid
+ * @param mixed $channel
  * @return boolean
  */
 function nodejs_add_user_to_channel($uid, $channel) {
@@ -531,7 +534,7 @@ class Nodejs {
     self::initConfig();
     drupal_alter('nodejs_message', $message);
     $options = array(
-      'method' => 'POST', 
+      'method' => 'POST',
       'data' => drupal_json_encode($message),
       'headers' => self::$headers,
     );

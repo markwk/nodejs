@@ -25,7 +25,7 @@ var channels = {},
  * Socket lifetime, token-identified channels.
  *
  * There are use cases where we want to send messages that update some content,
- * but only to those users currently viewing that content. The following 
+ * but only to those users currently viewing that content. The following
  * summarises how we might implement that:
  *
  * 1. Drupal sends a strong token and a channel name to node.js. The token is
@@ -55,15 +55,15 @@ var channels = {},
  * }
  *
  * 4. Modules wishing to use this API need to:
- *    a) generate a strong token and channel name pair, and send it as a 
+ *    a) generate a strong token and channel name pair, and send it as a
  *       message to node.js for each http request from a client who is to see
- *       updates to the channel (we should probably have an API function in 
+ *       updates to the channel (we should probably have an API function in
  *       nodejs.module for this)
  *    b) implement the client-side js to handle updates to the DOM in response
  *       to messages sent to the channel from a)
  *    c) send messages to node.js when the content the care about is changed
  *
- * The newly added nodejs_watchdog module is the first obvious example of a 
+ * The newly added nodejs_watchdog module is the first obvious example of a
  * module that can use this functionality.
  */
 
