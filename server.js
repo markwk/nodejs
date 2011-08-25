@@ -33,26 +33,23 @@ var channels = {},
  *    it to node.js access to the channel associated with the token.
  *
  * tokenChannels[channelName] = tokenChannels[channelName] || {};
- * tokenChannels[channelName][token] = false;
+ * tokenChannels[channelName].sids = {};
+ * tokenChannels[channelName][token] = true;
  *
  * 2. When a client connects with a channel token, server.js adds that client's
  *    socket sessionId to that channel, replacing false above.
  *
- * if (tokenChannels[channelName][clientToken] != undefined) {
- *   tokenChannels[channelName][clientToken] = sessionId;
+ * if (tokenChannels[channelName][clientToken] == true) {
+ *   tokenChannels[channelName].sids[] = sessionId;
+ *   delete tokenChannels[channelName];
  * }
  *
- * 3. When messages are sent to the channel, any sessionIds for non-existent
- *    sockets are garbage collected.
+ * 3. When a client disconnects, their subscriptions from tokenChannels should
+ *    be removed.
  *
- * for (var token in tokenChannels[channelName]) {
- *   if (io.sockets[tokenChannels[channelName][token]]) {
- *     io.sockets[tokenChannels[channelName][token]].send(message);
- *   }
- *   else if (tokenChannels[channelName][token]) {
- *     delete tokenChannels[channelName][token];
- *   }
- * }
+ *  for (var channel in channels) {
+ *    delete channels[channel].sessionIds[socket.id];
+ *  }
  *
  * 4. Modules wishing to use this API need to:
  *    a) generate a strong token and channel name pair, and send it as a
@@ -61,7 +58,7 @@ var channels = {},
  *       nodejs.module for this)
  *    b) implement the client-side js to handle updates to the DOM in response
  *       to messages sent to the channel from a)
- *    c) send messages to node.js when the content the care about is changed
+ *    c) send messages to node.js when the content they care about is changed
  *
  * The newly added nodejs_watchdog module is the first obvious example of a
  * module that can use this functionality.
