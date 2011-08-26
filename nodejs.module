@@ -15,12 +15,17 @@ function nodejs_generate_content_token() {
  */
 function nodejs_send_content_channel_token($channel, $anonymous_only = FALSE) {
   $message = (object) array(
-    'type' => 'contentToken',
     'token' => nodejs_generate_content_token(),
     'anonymousOnly' => $anonymous_only,
     'channel' => $channel,
   );
-  nodejs_send_message($message);
+
+  $response = Nodejs::sendContentToken($message);
+  if (isset($response->error)) {
+    $args = array('%token' => $message->token, '%code' => $response->code, '%error' => $response->error);
+    watchdog('nodejs', t('Error sending content token "%token" to the Node.js server: [%code] %error', $args));
+    return FALSE;
+  }
 
   // We always set this in drupal.settings, even though Ajax requests will not
   // see it. It's a bit ugly, but it means that setting the tokens for full
@@ -584,6 +589,16 @@ class Nodejs {
   public static function logoutUser($token) {
     self::initConfig();
     return drupal_http_request(self::$baseUrl . "nodejs/user/logout/$token", array('headers' => self::$headers));
+  }
+
+  public static function sendContentToken($message) {
+    self::initConfig();
+    $options = array(
+      'method' => 'POST', 
+      'data' => drupal_json_encode($message),
+      'headers' => self::$headers,
+    );
+    return drupal_http_request(self::$baseUrl . 'nodejs/content/token', $options);
   }
 
   public static function kickUser($uid) {
