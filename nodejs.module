@@ -8,6 +8,18 @@ function nodejs_generate_content_token() {
 }
 
 /**
+ * Send a content change message to a content channel.
+ */
+function nodejs_send_content_channel_message($message) {
+  $response = Nodejs::sendContentTokenMessage($message);
+  if (isset($response->error)) {
+    $args = array('%code' => $response->code, '%error' => $response->error);
+    watchdog('nodejs', t('Error sending content token message to the Node.js server: [%code] %error', $args));
+    return FALSE;
+  }
+}
+
+/**
  * Send a content channel token to Node.js. 
  *
  * @param mixed $channel
@@ -30,7 +42,7 @@ function nodejs_send_content_channel_token($channel, $anonymous_only = FALSE) {
   // We always set this in drupal.settings, even though Ajax requests will not
   // see it. It's a bit ugly, but it means that setting the tokens for full
   // page requests will just work.
-  drupal_add_js(array('nodejs' => array('contentTokens' => array($message->token))), array('type' => 'setting'));
+  drupal_add_js(array('nodejs' => array('contentTokens' => array($channel => $message->token))), array('type' => 'setting'));
 
   // We return the message, so that calling code can use it for Ajax requests.
   return $message->token;
@@ -433,6 +445,7 @@ function nodejs_auth_check($message) {
     if ($auth_user->uid) {
       nodejs_user_set_online($auth_user->uid);
     }
+    $auth_user->contentTokens = isset($message['contentTokens']) ? $message['contentTokens'] : array();
   }
   return $auth_user;
 }
@@ -589,6 +602,16 @@ class Nodejs {
   public static function logoutUser($token) {
     self::initConfig();
     return drupal_http_request(self::$baseUrl . "nodejs/user/logout/$token", array('headers' => self::$headers));
+  }
+
+  public static function sendContentTokenMessage($message) {
+    self::initConfig();
+    $options = array(
+      'method' => 'POST',
+      'data' => drupal_json_encode($message),
+      'headers' => self::$headers,
+    );
+    return drupal_http_request(self::$baseUrl . 'nodejs/content/token/message', $options);
   }
 
   public static function sendContentToken($message) {
