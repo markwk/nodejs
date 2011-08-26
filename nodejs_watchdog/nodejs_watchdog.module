@@ -4,6 +4,7 @@
  * Implements hook_form_FORM_ID_alter().
  */
 function nodejs_watchdog_form_dblog_filter_form_alter(&$form, &$form_state, $form_id) {
+  nodejs_send_content_channel_token('watchdog_dblog');
   drupal_add_js(drupal_get_path('module', 'nodejs_watchdog') . '/nodejs.watchdog.js', array('type' => 'file'));
 }
 
@@ -24,27 +25,26 @@ function nodejs_watchdog_watchdog(array $entry) {
 
   $entry['variables'] = isset($entry['variables']) ? serialize($entry['variables']) : serialize(array());
 
-  $row = array('data' =>
-    array(
-      // Cells
+  $row = array(
+    'data' => array(
       array('class' => 'icon'),
       t($entry['type']),
       format_date($entry['timestamp'], 'short'),
-      theme('dblog_message', array('event' => (object)$entry, 'link' => TRUE)),
-      theme('username', array('account' => $entry)),
+      theme('dblog_message', array('event' => (object) $entry, 'link' => TRUE)),
+      theme('username', array('account' => $entry['user'])),
       $entry['link'],
     ),
-    // Attributes for tr
     'class' => array(drupal_html_class('dblog-' . $entry['type']), $classes[$entry['severity']]),
   );
 
   $commands[] = ajax_command_before('#admin-dblog tr:eq(1)', nodejs_watchdog_theme_row($row));
   $message = (object) array(
-    'broadcast' => TRUE,
+    'channel' => 'watchdog_dblog',
+    'broadcast' => FALSE,
     'commands' => $commands,
+    'callback' => 'nodejsNodeAjax',
   );
-
-  nodejs_enqueue_message($message);
+  nodejs_send_content_channel_message($message);
 }
 
 /**

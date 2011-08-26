@@ -77,7 +77,8 @@ Drupal.Nodejs.checkConnection = function () {
 
 Drupal.Nodejs.sendAuthMessage = function () {
   var authMessage = {
-    authToken: Drupal.settings.nodejs.authToken
+    authToken: Drupal.settings.nodejs.authToken,
+    contentTokens: Drupal.settings.nodejs.contentTokens
   };
   Drupal.Nodejs.socket.emit('authenticate', authMessage);
 };
