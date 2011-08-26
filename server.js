@@ -106,6 +106,8 @@ backendSettings.setUserPresenceListUrl = '/nodejs/user/presence-list/:uid/:uidLi
 backendSettings.addAuthTokenToChannelUrl = '/nodejs/authtoken/channel/add/:channel/:uid';
 backendSettings.removeAuthTokenFromChannelUrl = '/nodejs/authtoken/channel/remove/:channel/:uid';
 backendSettings.toggleDebugUrl = '/nodejs/debug/toggle';
+backendSettings.contentTokenUrl = '/nodejs/content/token';
+backendSettings.publishMessageToContentChannelUrl = '/nodejs/content/token/message';
 
 /**
  * Check if the given channel is client-writable.
@@ -331,6 +333,41 @@ var publishMessageToChannel = function (message) {
 }
 
 /**
+ * Publish a message to clients subscribed to a channel.
+ */
+var publishMessageToContentChannel = function (request, response) {
+  var sentCount = 0;
+  request.setEncoding('utf8');
+  request.on('data', function (chunk) {
+    try {
+      var message = JSON.parse(chunk);
+      if (backendSettings.debug) {
+        console.log('publishMessageToContentChannel: message', message);
+      }
+    }
+    catch (exception) {
+      console.log('publishMessageToContentChannel: Invalid JSON "' + chunk + '"',  exception);
+      response.send({error: 'Invalid JSON, error: ' + exception.toString()});
+      return;
+    }
+    if (!message.hasOwnProperty('channel')) {
+      console.log('publishMessageToContentChannel: An invalid message object was provided.');
+      response.send({error: 'Invalid message'});
+      return;
+    }
+    if (!tokenChannels.hasOwnProperty(message.channel)) {
+      console.log('publishMessageToContentChannel: The channel "' + message.channel + '" doesn\'t exist.');
+      return;
+    }
+
+    for (var socketId in tokenChannels[message.channel].sockets) {
+      publishMessageToClient(socketId, message);
+    }
+    response.send({sent: 'sent'});
+  });
+}
+
+/**
  * Publish a message to a specific client.
  */
 var publishMessageToClient = function (sessionId, message) {
@@ -340,6 +377,9 @@ var publishMessageToClient = function (sessionId, message) {
       console.log('Sent message to client ' + sessionId);
     }
     return true;
+  }
+  else {
+    console.log('publishMessageToClient: Failed to find client ' + sessionId);
   }
 };
 
@@ -385,7 +425,8 @@ var kickUser = function (request, response) {
  * Logout the given user from the server.
  */
 var logoutUser = function (request, response) {
-  if (request.params.authToken) {
+  var authToken = request.params.authtoken || '';
+  if (authToken) {
     // Delete the user from the authenticatedClients hash.
     delete authenticatedClients[authToken];
 
@@ -753,6 +794,32 @@ var setUserOffline = function (uid) {
 }
 
 /**
+ * Set a content token.
+ */
+var setContentToken = function (request, response) {
+  request.setEncoding('utf8');
+  request.on('data', function (chunk) {
+    try {
+      var message = JSON.parse(chunk);
+      if (backendSettings.debug) {
+        console.log('setContentToken: message', message);
+      }
+    }
+    catch (exception) {
+      console.log('setContentToken: Invalid JSON "' + chunk + '"',  exception);
+      response.send({error: 'Invalid JSON, error: ' + exception.toString()});
+      return;
+    }
+    tokenChannels[message.channel] = tokenChannels[message.channel] || {'tokens': {}, 'sockets': {}};
+    tokenChannels[message.channel].tokens[message.token] = true;
+    if (backendSettings.debug) {
+      console.log('setContentToken', message.token, 'for channel', message.channel);
+    }
+    response.send({status: 'ok'});
+  });
+}
+
+/**
  * Setup a io.sockets.sockets{}.connection with uid, channels etc.
  */
 var setupClientConnection = function (sessionId, authData) {
@@ -774,6 +841,19 @@ var setupClientConnection = function (sessionId, authData) {
       sendPresenceChangeNotification(authData.uid, 'online');
     }
   }
+
+  for (var tokenChannel in authData.contentTokens) {
+    tokenChannels[tokenChannel] = tokenChannels[tokenChannel] || {'tokens': {}, 'sockets': {}};
+    for (var token in tokenChannels[tokenChannel].tokens) {
+      if (token == authData.contentTokens[tokenChannel]) {
+        tokenChannels[tokenChannel].sockets[sessionId] = true;
+        if (backendSettings.debug) {
+          console.log('Added token', token, 'for channel', tokenChannel, 'for socket', sessionId);
+        }
+      }
+    }
+  }
+
   process.emit('client-authenticated', sessionId, authData);
 
   if (backendSettings.debug) {
@@ -800,6 +880,8 @@ server.get(backendSettings.addUserToChannelUrl, addUserToChannel);
 server.get(backendSettings.removeUserFromChannelUrl, removeUserFromChannel);
 server.get(backendSettings.setUserPresenceListUrl, setUserPresenceList);
 server.get(backendSettings.toggleDebugUrl, toggleDebug);
+server.post(backendSettings.contentTokenUrl, setContentToken);
+server.post(backendSettings.publishMessageToContentChannelUrl, publishMessageToContentChannel);
 server.get('*', send404);
 server.listen(backendSettings.port, backendSettings.host);
 console.log('Started ' + backendSettings.scheme + ' server.');
