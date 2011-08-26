@@ -22,7 +22,9 @@ Node.js server on Ubuntu:
    [Socket.io](http://socket.io/), [connect](http://senchalabs.github.com/connect/),
    and [express](http://expressjs.com/)).
 
-        sudo curl http://npmjs.org/install.sh | sh && npm install
+        sudo curl http://npmjs.org/install.sh | sh
+        cd /into/the/nodejs/drupalmodule
+        npm install
 
 4. Optionally, copy 'server.js' to a directory specific to the Node.js server used by Drupal.
 
