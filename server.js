@@ -357,6 +357,7 @@ var publishMessageToContentChannel = function (request, response) {
     }
     if (!tokenChannels.hasOwnProperty(message.channel)) {
       console.log('publishMessageToContentChannel: The channel "' + message.channel + '" doesn\'t exist.');
+      response.send({error: 'Invalid message'});
       return;
     }
 
