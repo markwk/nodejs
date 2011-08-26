@@ -73,7 +73,6 @@ backendSettings = {
   'extensions': [],
   'clientsCanWriteToChannels': false,
   'clientsCanWriteToClients': false,
-  'clientsCanWriteToClients': false,
   'transports': ['websocket', 'flashsocket', 'htmlfile', 'xhr-polling', 'jsonp-polling'],
   'jsMinification': true,
   'jsEtag': true,
