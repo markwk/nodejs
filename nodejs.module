@@ -1,6 +1,37 @@
 <?php
 
 /**
+ * Generate a token for a piece of content. 
+ */
+function nodejs_generate_content_token() {
+  return drupal_hmac_base64(drupal_random_bytes(512), drupal_get_private_key() . drupal_get_hash_salt());
+}
+
+/**
+ * Send a content channel token to Node.js. 
+ *
+ * @param mixed $channel
+ * @param mixed $anonymous_only
+ */
+function nodejs_send_content_channel_token($channel, $anonymous_only = FALSE) {
+  $message = (object) array(
+    'type' => 'contentToken',
+    'token' => nodejs_generate_content_token(),
+    'anonymousOnly' => $anonymous_only,
+    'channel' => $channel,
+  );
+  nodejs_send_message($message);
+
+  // We always set this in drupal.settings, even though Ajax requests will not
+  // see it. It's a bit ugly, but it means that setting the tokens for full
+  // page requests will just work.
+  drupal_add_js(array('nodejs' => array('contentTokens' => array($message->token))), array('type' => 'setting'));
+
+  // We return the message, so that calling code can use it for Ajax requests.
+  return $message->token;
+}
+
+/**
  * Kick a user off the node.js server.
  *
  * @param mixed $uid 
