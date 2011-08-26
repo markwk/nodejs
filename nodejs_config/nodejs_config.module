@@ -183,7 +183,7 @@ function nodejs_config_form_submit($form, &$form_state) {
     drupal_set_message('<pre>' . $output . '</pre>');
   } 
   else {
-    file_put_contents($file_path, $js);
+    file_put_contents($file_path, $output);
   }
 }
 
