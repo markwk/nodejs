@@ -41,9 +41,8 @@ function nodejs_watchdog_watchdog(array $entry) {
   $message = (object) array(
     'channel' => 'watchdog_dblog',
     'broadcast' => FALSE,
-    'data' => array(
-      'commands' => $commands,
-    ),
+    'commands' => $commands,
+    'callback' => 'nodejsNodeAjax',
   );
   nodejs_send_content_channel_message($message);
 }

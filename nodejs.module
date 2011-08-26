@@ -11,12 +11,7 @@ function nodejs_generate_content_token() {
  * Send a content change message to a content channel.
  */
 function nodejs_send_content_channel_message($message) {
-  $response = Nodejs::sendContentTokenMessage($message);
-  if (isset($response->error)) {
-    $args = array('%code' => $response->code, '%error' => $response->error);
-    watchdog('nodejs', t('Error sending content token message to the Node.js server: [%code] %error', $args));
-    return FALSE;
-  }
+  Nodejs::sendContentTokenMessage($message);
 }
 
 /**
@@ -610,6 +605,7 @@ class Nodejs {
       'method' => 'POST',
       'data' => drupal_json_encode($message),
       'headers' => self::$headers,
+      'options' => array('timeout' => 5.0),
     );
     return drupal_http_request(self::$baseUrl . 'nodejs/content/token/message', $options);
   }
