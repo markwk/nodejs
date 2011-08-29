@@ -37,7 +37,7 @@ function nodejs_buddylist_post_message($node) {
     'sid' => session_id(),
     'msg_type' => 'message',
     'recipient_uid' => 0,
-    'modified' => chatroom_get_utc_timestamp(),
+    'modified' => time(),
     'anon_name' => '',
     'js_callback' => 'nodejsBuddyAddMessage',
   );
