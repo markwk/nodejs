@@ -1,11 +1,16 @@
 
 (function ($) {
 
-Drupal.Nodejs.callbacks.nodejsNotify = {
+Drupal.Nodejs.callbacks.nodejsNotify = {	
   callback: function (message) {
-    $.jGrowl(message.data.body, {header: message.data.subject, life:(Drupal.settings.nodejs_notify.notification_time*1000)});
+	var notifyTime = Drupal.settings.nodejs_notify.notification_time;
+	if (notifyTime > 0) {
+	   $.jGrowl(message.data.body, {header: message.data.subject, life:(notifyTime*1000)});
+    }
+	else {
+      $.jGrowl(message.data.body, {header: message.data.subject, sticky:true});
+	}	
   }
 };
 
 })(jQuery);
-

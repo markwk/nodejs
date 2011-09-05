@@ -78,7 +78,7 @@ function nodejs_notify_settings_form() {
   $form['settings']['notification_lifetime'] = array(
     '#type' => 'textfield',
     '#title' => 'Notification Lifetime',
-    '#description' => 'The number of seconds a notification will live before fading automatically.',
+    '#description' => 'The number of seconds a notification will live before fading automatically. (Set to 0 for sticky notifications that do not fade.)',
     '#default_value' => variable_get('nodejs_notify_notification_lifetime_seconds', 3) ,
     '#required' => TRUE,
   );
