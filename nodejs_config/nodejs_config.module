@@ -6,8 +6,8 @@
 function nodejs_config_menu() {
   return array(
     'admin/config/nodejs/js' => array(
-      'title' => 'Node.js server configuration',
-      'description' => 'Adjust Node.js server configuration.',
+      'title' => 'Node.js server configuration builder',
+      'description' => 'A utility that outputs configuration suggestions. Copy & paste the output from this utility to nodejs.config.js',
       'page callback' => 'drupal_get_form',
       'page arguments' => array('nodejs_config_form'),
       'access arguments' => array('administer site configuration'),
@@ -23,6 +23,20 @@ function nodejs_config_menu() {
  * @return array
  */
 function nodejs_config_form($form, &$form_state) {
+	$suggestion = variable_get('nodejs_config_js_suggestion', '');
+	$file_path = drupal_get_path('module', 'nodejs') . '/nodejs.config.js';	
+	$config_path_message = t('<ol><li>Configure your server settings in the SETTINGS form below.</li><li>Click the <b>Save Configuration</b> button</li><li>Copy the suggested configuration lines to <b>!file</b>, you need to do it manually.</li></ol>', array('!file' => $file_path));
+	
+	$form['config_suggestion'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Configuration builder',
+    '#description' => $config_path_message,
+  );
+  $form['config_suggestion']['nodejs_config_js'] = array(
+    '#type' => 'textarea',
+    '#title' => 'Suggested configuration:',
+    '#default_value' => $suggestion,
+  );
   $form['config'] = array(
     '#type' => 'fieldset',
     '#title' => 'Settings',
@@ -59,14 +73,13 @@ function nodejs_config_form($form, &$form_state) {
     '#description' => 'File system path to a certificate used for https communication with the server and clients.',
     '#default_value' => variable_get('nodejs_config_cert', '/path/to/cert/file'),
   );
-
   $form['config']['nodejs_config_resource'] = array(
     '#type' => 'textfield',
     '#title' => 'Resource',
     '#required' => TRUE,
     '#description' => 'http path that the node.js server should respond to. 
                        This value needs to match the Drupal node.js configuration.',
-    '#default_value' => variable_get('nodejs_config_resource', '/node.js/realtime'),
+    '#default_value' => variable_get('nodejs_config_resource', '/socket.io'),
   );
   $form['config']['nodejs_config_publishUrl'] = array(
     '#type' => 'textfield',
@@ -95,7 +108,6 @@ function nodejs_config_form($form, &$form_state) {
                        without going via the backend. defaults to false',
     '#default_value' => variable_get('nodejs_config_write_clients', FALSE),
   );
-
   $form['config']['backend'] = array(
     '#type' => 'fieldset',
     '#title' => 'Backend',
@@ -114,12 +126,12 @@ function nodejs_config_form($form, &$form_state) {
     '#description' => 'TCP port of the server running the Drupal site. Usually 80.',
     '#default_value' => variable_get('nodejs_config_backend_port', '80'),
   );
-  $form['config']['backend']['nodejs_config_backend_authPath'] = array(
+  $form['config']['backend']['nodejs_config_backend_messagePath'] = array(
     '#type' => 'textfield',
     '#title' => 'Auth Path',
     '#description' => 'http path on which the Drupal node.js module listens for authentication check 
                        requests. Must end with /.',
-    '#default_value' => variable_get('nodejs_config_backend_authPath', '/nodejs/auth/'),
+    '#default_value' => variable_get('nodejs_config_backend_messagePath', '/nodejs/message'),
   );
   $form['config']['backend']['nodejs_config_debug'] = array(
     '#type' => 'checkbox',
@@ -127,7 +139,6 @@ function nodejs_config_form($form, &$form_state) {
     '#description' => 'Show debug information from the node.js process.',
     '#default_value' => variable_get('nodejs_config_debug', FALSE),
   );
-
   $form['ext'] = array(
     '#type' => 'fieldset',
     '#title' => 'Extensions',
@@ -154,36 +165,39 @@ function nodejs_config_form($form, &$form_state) {
 function nodejs_config_form_submit($form, &$form_state) {
   $values = $form_state['values'];
   $ext = $values['nodejs_config_extensions'];
-  $ext = explode("\n", str_replace("\r", '', $ext));
+  if ($ext == !NULL) {
+  	$ext = explode("\n", str_replace("\r", '', $ext));
+  }
   $array = array(
     'scheme' => variable_get('nodejs_server_scheme', 'http'),
     'host' => check_plain($values['nodejs_config_host']),
-    'port' => check_plain($values['nodejs_config_port']),
+    'port' => (int) $values['nodejs_config_port'],
     'key' => check_plain($values['nodejs_config_key']),
     'cert' => check_plain($values['nodejs_config_cert']),
     'resource' => check_plain($values['nodejs_config_resource']),
     'publishUrl' => check_plain($values['nodejs_config_publishUrl']),
     'serviceKey' => check_plain($values['nodejs_config_serviceKey']),
     'backend' => array(
-      'port' => check_plain($values['nodejs_config_backend_port']),
+      'port' => (int) $values['nodejs_config_backend_port'],
       'host' => check_plain($values['nodejs_config_backend_host']),
-      'authPath' => check_plain($values['nodejs_config_backend_authPath']),
+      'messagePath' => check_plain($values['nodejs_config_backend_messagePath']),
     ),
     'clientsCanWriteToChannels' => (bool) $values['nodejs_config_write_channels'],
     'clientsCanWriteToClients' => (bool) $values['nodejs_config_write_clients'],
-    'extensions' => array($ext),
+    'extensions' => $ext,
     'debug' => (bool) $values['nodejs_config_debug'],
+    'transports' => array(
+    	'websocket', 'flashsocket', 'htmlfile', 'xhr-polling', 'jsonp-polling'
+    ),
+	  'jsMinification' => true,
+	  'jsEtag' => true,
+	  'logLevel' => 1
   );
   $output = 'backendSettings = ' . drupal_json_encode($array);
   $output = str_replace(array('= {', ',', '}}', ':{', '\/'), array("= {\n  ", ",\n  ", "\n  }\n}", ":{\n  ",  '/'), $output);
+  $output = $output . ';';
+	$output = "/**\n* This configuration file was built using the 'Node.js server configuration builder'.\n* For a more fully commented example see the file nodejs.config.js.example in the root of this module\n*/\n" . $output;
 
-  $file_path = drupal_get_path('module', 'nodejs') . '/nodejs.config.js';
-  if (!is_writable($file_path)) {
-    drupal_set_message(t('It was not possible to write the below lines to <b>!file</b>, you need to do it manually.', array('!file' => $file_path)));
-    drupal_set_message('<pre>' . $output . '</pre>');
-  } 
-  else {
-    file_put_contents($file_path, $js);
-  }
+  variable_set('nodejs_config_js_suggestion', $output);
 }
 
