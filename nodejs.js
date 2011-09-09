@@ -57,6 +57,10 @@ Drupal.Nodejs.connect = function () {
   var scheme = Drupal.settings.nodejs.secure ? 'https' : 'http',
       url = scheme + '://' + Drupal.settings.nodejs.host + ':' + Drupal.settings.nodejs.port;
   Drupal.settings.nodejs.connectTimeout = Drupal.settings.nodejs.connectTimeout || 5000;
+  // Check whether socket.io's io-object is defined.
+  if (typeof io === 'undefined') {
+     return false;
+  }
   Drupal.Nodejs.socket = io.connect(url, {'connect timeout': Drupal.settings.nodejs.connectTimeout});
   Drupal.Nodejs.socket.on('connect', function() {
     Drupal.Nodejs.sendAuthMessage();
