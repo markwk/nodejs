@@ -968,7 +968,9 @@ var extensionsConfig = {
   'addClientToChannel': addClientToChannel,
   'backendSettings': backendSettings,
   'channels': channels,
-  'io': io
+  'io': io,
+  'tokenChannels': tokenChannels,
+  'sendMessageToBackend': sendMessageToBackend
 };
 invokeExtensions('setup', extensionsConfig);
 

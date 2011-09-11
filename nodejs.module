@@ -395,19 +395,29 @@ function nodejs_message_handler() {
   }
 
   $message = drupal_json_decode($_POST['messageJson']);
+  $response = array();
   switch ($message['messageType']) {
     case 'authenticate':
       $response = nodejs_auth_check($message);
       break;
+
     case 'userOffline':
       nodejs_user_set_offline($message['uid']);
-      $response = array();
       break;
-    default:
-      $response = array('error' => 'Not implemented');
-  }
 
-  drupal_json_output($response);
+    default:
+      $handlers = array();
+      foreach (module_implements('nodejs_message_callback') as $module) {
+        $function = $module . '_nodejs_message_callback';
+        $handlers += $function($message['messageType']);
+      }
+      foreach ($handlers as $callback) {
+        $callback($message, $response);
+      }
+  }
+  drupal_alter('nodejs_message_response', $response, $message);
+
+  drupal_json_output($response ? $response : array('error' => 'Not implemented'));
   drupal_exit();
 }
 
