@@ -734,6 +734,11 @@ var cleanupSocket = function (socket) {
     }
     presenceTimeoutIds[uid] = setTimeout(checkOnlineStatus, 2000, uid);
   }
+
+  for (var tokenChannel in tokenChannels) {
+    delete tokenChannels[tokenChannel].sockets[socket.id];
+  }
+
   delete io.sockets.sockets[socket.id];
 }
 
@@ -810,16 +815,18 @@ var setupClientConnection = function (sessionId, authData) {
       sendPresenceChangeNotification(authData.uid, 'online');
     }
   }
-
+ 
+  var clientToken = '';
   for (var tokenChannel in authData.contentTokens) {
     tokenChannels[tokenChannel] = tokenChannels[tokenChannel] || {'tokens': {}, 'sockets': {}};
-    for (var token in tokenChannels[tokenChannel].tokens) {
-      if (token == authData.contentTokens[tokenChannel]) {
-        tokenChannels[tokenChannel].sockets[sessionId] = true;
-        if (backendSettings.debug) {
-          console.log('Added token', token, 'for channel', tokenChannel, 'for socket', sessionId);
-        }
+
+    clientToken = authData.contentTokens[tokenChannel];
+    if (tokenChannels[tokenChannel].tokens[clientToken]) {
+      tokenChannels[tokenChannel].sockets[sessionId] = true;
+      if (backendSettings.debug) {
+        console.log('Added token', clientToken, 'for channel', tokenChannel, 'for socket', sessionId);
       }
+      delete tokenChannels[tokenChannel].tokens[clientToken];
     }
   }
 
