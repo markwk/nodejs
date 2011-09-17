@@ -155,8 +155,10 @@ var authenticateClientCallback = function (response) {
       if (backendSettings.debug) {
         console.log('Valid login for uid "', authData.uid, '"');
       }
-      authenticatedClients[authData.auth_key] = authData;
       setupClientConnection(authData.clientId, authData);
+      // Don't cache contentTokens, we only want to use them once.
+      authData.contentTokens = {};
+      authenticatedClients[authData.auth_key] = authData;
     }
     else {
       console.log('Invalid login for uid "', authData.uid, '"');
