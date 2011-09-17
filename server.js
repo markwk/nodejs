@@ -250,6 +250,7 @@ var publishMessage = function (request, response) {
     else {
       sentCount = publishMessageToChannel(message);
     }
+    process.emit('message-published', message, sentCount);
     response.send({sent: sentCount});
   });
 }
