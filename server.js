@@ -2,8 +2,6 @@
  * Provides Node.js - Drupal integration. 
  *
  * This code is beta quality.
- *
- * Expect bugs, but not API changes as we prepare for 1.0 release.
  */
 
 var http = require('http'),
@@ -11,12 +9,21 @@ var http = require('http'),
     url = require('url'),
     fs = require('fs'),
     express = require('express'),
-    io = require('socket.io'),
+    socket_io = require('socket.io'),
     util = require('util'),
+    querystring = require('querystring'),
     vm = require('vm');
+
+var channels = {},
+    authenticatedClients = {},
+    onlineUsers = {},
+    presenceTimeoutIds = {},
+    tokenChannels = {},
+    extensions = [];
 
 try {
   var backendSettings = vm.runInThisContext(fs.readFileSync(process.cwd() + '/nodejs.config.js'));
+  backendSettings.extensions = backendSettings.extensions || [];
 }
 catch (exception) {
   console.log("Failed to read config file, exiting: " + exception);
@@ -24,106 +31,157 @@ catch (exception) {
 }
 
 // Load server extensions
-var extensions = [];
-if (backendSettings.extensions && backendSettings.extensions.length) {
-  var num = backendSettings.extensions.length,
-    i,
-    extfn;
-  for (i = 0; i < num; i++) {
-    extfn = backendSettings.extensions[i];
-    try {
-      // Load JS files for extensions as modules, and collect the returned
-      // object for each extension.
-      extensions.push(require(__dirname + '/' + extfn));
-      console.log("Extension loaded: " + extfn);
-    }
-    catch (exception) {
-      console.log("Failed to load extension " + extfn + " [" + exception + "]");
-      process.exit(1);
-    }
+for (var i in backendSettings.extensions) {
+  try {
+    // Load JS files for extensions as modules, and collect the returned
+    // object for each extension.
+    extensions.push(require(__dirname + '/' + backendSettings.extensions[i]));
+    console.log("Extension loaded: " + backendSettings.extensions[i]);
+  }
+  catch (exception) {
+    console.log("Failed to load extension " + backendSettings.extensions[i] + " [" + exception + "]");
+    process.exit(1);
   }
 }
 
 // Initialize other default settings
-backendSettings.serverStatsUrl = '/nodejs/stats/server';
-backendSettings.getActiveChannelsUrl = '/nodejs/stats/channels';
 backendSettings.kickUserUrl = '/nodejs/user/kick/:uid';
+backendSettings.logoutUserUrl = '/nodejs/user/logout/:authtoken';
 backendSettings.addUserToChannelUrl = '/nodejs/user/channel/add/:channel/:uid';
 backendSettings.removeUserFromChannelUrl = '/nodejs/user/channel/remove/:channel/:uid';
+backendSettings.setUserPresenceListUrl = '/nodejs/user/presence-list/:uid/:uidList';
 backendSettings.addAuthTokenToChannelUrl = '/nodejs/authtoken/channel/add/:channel/:uid';
 backendSettings.removeAuthTokenFromChannelUrl = '/nodejs/authtoken/channel/remove/:channel/:uid';
 backendSettings.toggleDebugUrl = '/nodejs/debug/toggle';
+backendSettings.contentTokenUrl = '/nodejs/content/token';
+backendSettings.publishMessageToContentChannelUrl = '/nodejs/content/token/message';
 
 /**
  * Check if the given channel is client-writable.
  */
 var channelIsClientWritable = function (channel) {
-  if (socket.channels.hasOwnProperty(channel)) {
-    return socket.channels[channel].isClientWritable;
+  if (channels.hasOwnProperty(channel)) {
+    return channels[channel].isClientWritable;
   }
   return false;
+}
+
+/**
+ * Send a message to the backend.
+ */
+var sendMessageToBackend = function (message, callback) {
+  var requestBody = querystring.stringify({
+        messageJson: JSON.stringify(message), 
+        serviceKey: backendSettings.backend.serviceKey
+      }),
+      options = {
+        port: backendSettings.backend.port,
+        host: backendSettings.backend.host,
+        headers: {
+          'Content-Length': Buffer.byteLength(requestBody),
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        agent: false,
+        method: 'POST',
+        agent: http.getAgent(backendSettings.backend.host, backendSettings.backend.port),
+        path: backendSettings.backend.messagePath
+      },
+      scheme = backendSettings.backend.scheme,
+      request;
+
+  if (backendSettings.debug) {
+    console.log("Sending message to backend", message, options);
+  }
+  request = scheme == 'http' ? http.request(options, callback) : https.request(options, callback);
+  request.on('error', function (error) {
+    console.log("Error sending message to backend:", error.message);
+  });
+  request.end(requestBody);
 }
 
 /**
  * Authenticate a client connection based on the message it sent.
  */
 var authenticateClient = function (client, message) {
-  var options = {
-    port: backendSettings.backend.port,
-    host: backendSettings.backend.host,
-    path: backendSettings.backend.authPath + message.authToken
-  };
-  if (backendSettings.backend.scheme == 'https') {
-    https.get(options, authenticateClientCallback)
-      .on('error', authenticateErrorCallback);
+  // If the authToken is verified, initiate a connection with the client.
+  if (authenticatedClients[message.authToken]) {
+    if (backendSettings.debug) {
+      console.log('Reusing existing authentication data for key:', message.authToken, ', client id:', client.id);
+    }
+    setupClientConnection(client.id, authenticatedClients[message.authToken]);
   }
   else {
-    http.get(options, authenticateClientCallback)
-      .on('error', authenticateErrorCallback);
+    message.messageType = 'authenticate';
+    message.clientId = client.id;
+    sendMessageToBackend(message, authenticateClientCallback);
   }
-  function authenticateClientCallback(response) {
-    response.on('data', function (chunk) {
-      if (response.statusCode == 404) {
-        if (backendSettings.debug) {
-          console.log('Backend authentication url not found, tried using these options: ');
-          console.log(options);
-        }
-        else {
-          console.log('Backend authentication url not found.');
-        }
-        return;
-      }
-      response.setEncoding('utf8');
-      var authData = false;
-      try {
-        authData = JSON.parse(chunk);
-      }
-      catch (exception) {
-        console.log('Failed to parse authentication message: ' + exception);
-        if (backendSettings.debug) {
-          console.log('Failed message string: ' + chunk);
-        }
-        return;
-      }
-      if (!checkServiceKey(authData.serviceKey)) {
-        console.log('Invalid service key "' + authData.serviceKey + '"');
-        return;
-      }
-      if (authData.nodejs_valid_auth_key) {
-        if (backendSettings.debug) {
-          console.log("Valid login for uid: " + authData.uid);
-        }
-        socket.authenticatedClients[message.authToken] = authData;
-        setupClientConnection(client.sessionId, authData);
+}
+
+/**
+ * Handle authentication call response.
+ */
+var authenticateClientCallback = function (response) {
+  var requestBody = '';
+  response.on('data', function (chunk) {
+    requestBody += chunk;
+  });
+  response.on('end', function () {
+    if (response.statusCode == 404) {
+      if (backendSettings.debug) {
+        console.log('Backend authentication url not found, full response info:', response);
       }
       else {
-        console.log('Invalid login for uid "' + authData.uid + '"');
-        delete socket.authenticatedClients[message.authToken];
+        console.log('Backend authentication url not found.');
       }
-    });
+      return;
+    }
+    response.setEncoding('utf8');
+    var authData = false;
+    try {
+      authData = JSON.parse(requestBody);
+    }
+    catch (exception) {
+      console.log('Failed to parse authentication message:', exception);
+      if (backendSettings.debug) {
+        console.log('Failed message string: ' + requestBody);
+      }
+      return;
+    }
+    if (!checkServiceKey(authData.serviceKey)) {
+      console.log('Invalid service key "', authData.serviceKey, '"');
+      return;
+    }
+    if (authData.nodejs_valid_auth_key) {
+      if (backendSettings.debug) {
+        console.log('Valid login for uid "', authData.uid, '"');
+      }
+      authenticatedClients[authData.auth_key] = authData;
+      setupClientConnection(authData.clientId, authData);
+    }
+    else {
+      console.log('Invalid login for uid "', authData.uid, '"');
+      delete authenticatedClients[authData.auth_key];
+    }
+  });
+}
+
+/**
+ * Send a presence notifcation for uid.
+ */
+var sendPresenceChangeNotification = function (uid, presenceEvent) {
+  if (onlineUsers[uid]) {
+    for (var i in onlineUsers[uid]) {
+      var sessionIds = getNodejsSessionIdsFromUid(onlineUsers[uid][i]);
+      if (sessionIds.length > 0 && backendSettings.debug) {
+        console.log('Sending presence notification for', uid, 'to', onlineUsers[uid][i]);
+      }
+      for (var j in sessionIds) {
+        io.sockets.socket(sessionIds[j]).json.send({'presenceNotification': {'uid': uid, 'event': presenceEvent}});
+      }
+    }
   }
-  function authenticateErrorCallback(exception) {
-    console.log("Error hitting backend with authentication token: " + exception);
+  if (backendSettings.debug) {
+    console.log('sendPresenceChangeNotification', uid, presenceEvent, onlineUsers);
   }
 }
 
@@ -154,15 +212,19 @@ var checkServiceKey = function (serviceKey) {
  * Http callback - set the debug flag.
  */
 var toggleDebug = function (request, response) {
+  var requestBody = '';
   request.setEncoding('utf8');
   request.on('data', function (chunk) {
+    requestBody += chunk;
+  });
+  request.on('end', function () {
     try {
-      var toggle = JSON.parse(chunk);
+      var toggle = JSON.parse(requestBody);
       backendSettings.debug = toggle.debug;
       response.send({debug: toggle.debug});
     }
     catch (exception) {
-      console.log('Invalid JSON "' + chunk + '": ' + exception);
+      console.log('toggleDebug: Invalid JSON "' + requestBody + '"', exception);
       response.send({error: 'Invalid JSON, error: ' + e.toString()});
     }
   });
@@ -172,17 +234,20 @@ var toggleDebug = function (request, response) {
  * Http callback - read in a JSON message and publish it to interested clients.
  */
 var publishMessage = function (request, response) {
-  var sentCount = 0;
+  var sentCount = 0, requestBody = '';
   request.setEncoding('utf8');
   request.on('data', function (chunk) {
+    requestBody += chunk;
+  });
+  request.on('end', function () {
     try {
-      var message = JSON.parse(chunk);
+      var message = JSON.parse(requestBody);
       if (backendSettings.debug) {
-        console.log('publishMessage: message --> ' + message);
+        console.log('publishMessage: message', message);
       }
     }
     catch (exception) {
-      console.log('Invalid JSON "' + chunk + '": ' + exception);
+      console.log('publishMessage: Invalid JSON "' + requestBody + '"',  exception);
       response.send({error: 'Invalid JSON, error: ' + exception.toString()});
       return;
     }
@@ -190,12 +255,13 @@ var publishMessage = function (request, response) {
       if (backendSettings.debug) {
         console.log('Broadcasting message');
       }
-      socket.broadcast(message);
-      sentCount = socket.clients.length;
+      io.sockets.json.send(message);
+      sentCount = io.sockets.sockets.length;
     }
     else {
       sentCount = publishMessageToChannel(message);
     }
+    process.emit('message-published', message, sentCount);
     response.send({sent: sentCount});
   });
 }
@@ -208,13 +274,13 @@ var publishMessageToChannel = function (message) {
     console.log('publishMessageToChannel: An invalid message object was provided.');
     return 0;
   }
-  if (!socket.channels.hasOwnProperty(message.channel)) {
+  if (!channels.hasOwnProperty(message.channel)) {
     console.log('publishMessageToChannel: The channel "' + message.channel + '" doesn\'t exist.');
     return 0;
   }
 
   var clientCount = 0;
-  for (var sessionId in socket.channels[message.channel].sessionIds) {
+  for (var sessionId in channels[message.channel].sessionIds) {
     if (publishMessageToClient(sessionId, message)) {
       clientCount++;
     }
@@ -226,47 +292,88 @@ var publishMessageToChannel = function (message) {
 }
 
 /**
+ * Publish a message to clients subscribed to a channel.
+ */
+var publishMessageToContentChannel = function (request, response) {
+  var sentCount = 0, requestBody = '';
+  request.setEncoding('utf8');
+  request.on('data', function (chunk) {
+    requestBody += chunk;
+  });
+  request.on('end', function () {
+    try {
+      var message = JSON.parse(requestBody);
+      if (backendSettings.debug) {
+        console.log('publishMessageToContentChannel: message', message);
+      }
+    }
+    catch (exception) {
+      console.log('publishMessageToContentChannel: Invalid JSON "' + requestBody + '"', exception);
+      response.send({error: 'Invalid JSON, error: ' + exception.toString()});
+      return;
+    }
+    if (!message.hasOwnProperty('channel')) {
+      console.log('publishMessageToContentChannel: An invalid message object was provided.');
+      response.send({error: 'Invalid message'});
+      return;
+    }
+    if (!tokenChannels.hasOwnProperty(message.channel)) {
+      console.log('publishMessageToContentChannel: The channel "' + message.channel + '" doesn\'t exist.');
+      response.send({error: 'Invalid message'});
+      return;
+    }
+
+    for (var socketId in tokenChannels[message.channel].sockets) {
+      publishMessageToClient(socketId, message);
+    }
+    response.send({sent: 'sent'});
+  });
+}
+
+/**
  * Publish a message to a specific client.
  */
 var publishMessageToClient = function (sessionId, message) {
-  if (socket.clients[sessionId]) {
-    socket.clients[sessionId].send(message);
+  if (io.sockets.sockets[sessionId]) {
+    io.sockets.socket(sessionId).json.send(message);
     if (backendSettings.debug) {
       console.log('Sent message to client ' + sessionId);
     }
     return true;
   }
-  return false;
+  else {
+    console.log('publishMessageToClient: Failed to find client ' + sessionId);
+  }
 };
 
 /**
  * Sends a 404 message.
  */
-var send404 = function(request, response) {
+var send404 = function (request, response) {
   response.send('Not Found.', 404);
 };
 
 /**
  * Kicks the given logged in user from the server.
  */
-var kickUser = function(request, response) {
+var kickUser = function (request, response) {
   if (request.params.uid) {
     // Delete the user from the authenticatedClients hash.
-    for (var authToken in socket.authenticatedClients) {
-      if (socket.authenticatedClients[authToken].uid == request.params.uid) {
-        delete socket.authenticatedClients[authToken];
+    for (var authToken in authenticatedClients) {
+      if (authenticatedClients[authToken].uid == request.params.uid) {
+        delete authenticatedClients[authToken];
       }
     }
     // Destroy any socket connections associated with this uid.
-    for (var clientId in socket.clients) {
-      if (socket.clients[clientId].uid == request.params.uid) {
-        delete socket.clients[clientId];
+    for (var clientId in io.sockets.sockets) {
+      if (io.sockets.sockets[clientId].uid == request.params.uid) {
+        delete io.sockets.sockets[clientId];
         if (backendSettings.debug) {
           console.log('kickUser: deleted socket "' + clientId + '" for uid "' + request.params.uid + '"');
         }
         // Delete any channel entries for this clientId.
-        for (var channel in socket.channels) {
-          delete socket.channels[channel].sessionIds[clientId];
+        for (var channel in channels) {
+          delete channels[channel].sessionIds[clientId];
         }
       }
     }
@@ -278,50 +385,43 @@ var kickUser = function(request, response) {
 };
 
 /**
- * Return a list of active channels.
+ * Logout the given user from the server.
  */
-var getActiveChannels = function(request, response) {
-  var channels = {};
-  for (var channel in socket.channels) {
-    channels[channel] = channel;
-  }
-  if (backendSettings.debug) {
-    console.log('getActiveChannels: returning channels --> ' . channels.toString());
-  }
-  response.send(channels);
-};
+var logoutUser = function (request, response) {
+  var authToken = request.params.authtoken || '';
+  if (authToken) {
+    // Delete the user from the authenticatedClients hash.
+    delete authenticatedClients[authToken];
 
-/**
- * Return summary info about the server.
- */
-var returnServerStats = function(request, response) {
-  var channels = [], clients = [];
-  for (var channel in socket.channels) {
-    channels.push(channel);
+    // Destroy any socket connections associated with this authToken.
+    for (var clientId in io.sockets.sockets) {
+      if (io.sockets.sockets[clientId].authToken == request.params.authToken) {
+        delete io.sockets.sockets[clientId];
+        // Delete any channel entries for this clientId.
+        for (var channel in channels) {
+          delete channels[channel].sessionIds[clientId];
+        }
+      }
+    }
+    response.send({'status': 'success'});
+    return;
   }
-  for (var sessionId in socket.authenticatedClients) {
-    clients.push({'user': socket.authenticatedClients[sessionId], 'sessionId': sessionId});
-  }
-  var stats = {
-    'channels': channels,
-    'totalClientCount': socket.clients.length,
-    'authenticatedClients': clients
-  };
-  if (backendSettings.debug) {
-    console.log('returnServerStats: returning server stats --> ' + stats);
-  }
-  response.send(stats);
+  console.log('Failed to logout user, no authToken supplied');
+  response.send({'status': 'failed', 'error': 'missing authToken'});
 };
 
 /**
  * Get the list of Node.js sessionIds for a given uid.
  */
-var getNodejsSessionIdsFromUid = function(uid) {
+var getNodejsSessionIdsFromUid = function (uid) {
   var sessionIds = [];
-  for (var sessionId in socket.clients) {
-    if (socket.clients[sessionId].uid == uid) {
+  for (var sessionId in io.sockets.sockets) {
+    if (io.sockets.sockets[sessionId].uid == uid) {
       sessionIds.push(sessionId);
     }
+  }
+  if (backendSettings.debug) {
+    console.log('getNodejsSessionIdsFromUid', {uid: sessionIds});
   }
   return sessionIds;
 }
@@ -329,12 +429,15 @@ var getNodejsSessionIdsFromUid = function(uid) {
 /**
  * Get the list of Node.js sessionIds for a given authToken.
  */
-var getNodejsSessionIdsFromAuthToken = function(authToken) {
+var getNodejsSessionIdsFromAuthToken = function (authToken) {
   var sessionIds = [];
-  for (var sessionId in socket.clients) {
-    if (socket.clients[sessionId].authToken == authToken) {
+  for (var sessionId in io.sockets.sockets) {
+    if (io.sockets.sockets[sessionId].authToken == authToken) {
       sessionIds.push(sessionId);
     }
+  }
+  if (backendSettings.debug) {
+    console.log('getNodejsSessionIdsFromAuthToken', {authToken: sessionIds});
   }
   return sessionIds;
 }
@@ -342,7 +445,7 @@ var getNodejsSessionIdsFromAuthToken = function(authToken) {
 /**
  * Add a user to a channel.
  */
-var addUserToChannel = function(request, response) {
+var addUserToChannel = function (request, response) {
   var uid = request.params.uid || '';
   var channel = request.params.channel || '';
   if (uid && channel) {
@@ -356,11 +459,11 @@ var addUserToChannel = function(request, response) {
       response.send({'status': 'failed', 'error': 'Invalid channel name.'});
       return;
     }
-    socket.channels[channel] = socket.channels[channel] || {'sessionIds': {}};
+    channels[channel] = channels[channel] || {'sessionIds': {}};
     var sessionIds = getNodejsSessionIdsFromUid(uid);
     if (sessionIds.length > 0) {
       for (var i in sessionIds) {
-        socket.channels[channel].sessionIds[sessionIds[i]] = sessionIds[i];
+        channels[channel].sessionIds[sessionIds[i]] = sessionIds[i];
       }
       if (backendSettings.debug) {
         console.log("Added channel '" + channel + "' to sessionIds " + sessionIds.join());
@@ -371,15 +474,12 @@ var addUserToChannel = function(request, response) {
       console.log("No active sessions for uid: " + uid);
       response.send({'status': 'failed', 'error': 'No active sessions for uid.'});
     }
-    for (var authToken in socket.authenticatedClients) {
-      if (socket.authenticatedClients[authToken].uid == uid) {
-        if (backendSettings.debug) {
-          console.log("Found uid '" + uid + "' in authenticatedClients, channels " + socket.authenticatedClients[authToken].channels.toString());
-        }
-        if (socket.authenticatedClients[authToken].channels.indexOf(channel) == -1) {
-          socket.authenticatedClients[authToken].channels.push(channel);
+    for (var authToken in authenticatedClients) {
+      if (authenticatedClients[authToken].uid == uid) {
+        if (authenticatedClients[authToken].channels.indexOf(channel) == -1) {
+          authenticatedClients[authToken].channels.push(channel);
           if (backendSettings.debug) {
-            console.log("Added channel '" + channel + "' socket.authenticatedClients");
+            console.log("Added channel '" + channel + "' authenticatedClients");
           }
         }
       }
@@ -394,7 +494,7 @@ var addUserToChannel = function(request, response) {
 /**
  * Add an authToken to a channel.
  */
-var addAuthTokenToChannel = function(request, response) {
+var addAuthTokenToChannel = function (request, response) {
   var authToken = request.params.authToken || '';
   var channel = request.params.channel || '';
   if (!authToken || !channel) {
@@ -408,16 +508,16 @@ var addAuthTokenToChannel = function(request, response) {
     response.send({'status': 'failed', 'error': 'Invalid channel name.'});
     return;
   }
-  if (!socket.authenticatedClients[authToken]) {
+  if (!authenticatedClients[authToken]) {
     console.log("Unknown authToken : " + authToken);
     response.send({'status': 'failed', 'error': 'Invalid authToken.'});
     return;
   }
-  socket.channels[channel] = socket.channels[channel] || {'sessionIds': {}};
+  channels[channel] = channels[channel] || {'sessionIds': {}};
   var sessionIds = getNodejsSessionIdsFromAuthtoken(authToken);
   if (sessionIds.length > 0) {
     for (var i in sessionIds) {
-      socket.channels[channel].sessionIds[sessionIds[i]] = sessionIds[i];
+      channels[channel].sessionIds[sessionIds[i]] = sessionIds[i];
     }
     if (backendSettings.debug) {
       console.log("Added sessionIds '" + sessionIds.join() + "' to channel '" + channel + "'");
@@ -428,10 +528,10 @@ var addAuthTokenToChannel = function(request, response) {
     console.log("No active sessions for authToken: " + authToken);
     response.send({'status': 'failed', 'error': 'No active sessions for uid.'});
   }
-  if (socket.authenticatedClients[authToken].channels.indexOf(channel) == -1) {
-    socket.authenticatedClients[authToken].channels.push(channel);
+  if (authenticatedClients[authToken].channels.indexOf(channel) == -1) {
+    authenticatedClients[authToken].channels.push(channel);
     if (backendSettings.debug) {
-      console.log("Added channel '" + channel + "' to socket.authenticatedClients");
+      console.log("Added channel '" + channel + "' to authenticatedClients");
     }
   }
 };
@@ -439,17 +539,17 @@ var addAuthTokenToChannel = function(request, response) {
 /**
  * Add a client (specified by session ID) to a channel.
  */
-var addClientToChannel = function(sessionId, channel) {
+var addClientToChannel = function (sessionId, channel) {
   if (sessionId && channel) {
-    if (!/^[0-9]+$/.test(sessionId) || !socket.clients.hasOwnProperty(sessionId)) {
+    if (!/^[0-9]+$/.test(sessionId) || !io.sockets.sockets.hasOwnProperty(sessionId)) {
       console.log("addClientToChannel: Invalid sessionId: " + sessionId);
     }
     else if (!/^[a-z0-9_]+$/i.test(channel)) {
       console.log("addClientToChannel: Invalid channel: " + channel);
     }
     else {
-      socket.channels[channel] = socket.channels[channel] || {'sessionIds': {}};
-      socket.channels[channel].sessionIds[sessionId] = sessionId;
+      channels[channel] = channels[channel] || {'sessionIds': {}};
+      channels[channel].sessionIds[sessionId] = sessionId;
       if (backendSettings.debug) {
         console.log("Added channel '" + channel + "' to sessionId " + sessionId);
       }
@@ -465,7 +565,7 @@ var addClientToChannel = function(sessionId, channel) {
 /**
  * Remove a user from a channel.
  */
-var removeUserFromChannel = function(request, response) {
+var removeUserFromChannel = function (request, response) {
   var uid = request.params.uid || '';
   var channel = request.params.channel || '';
   if (uid && channel) {
@@ -479,18 +579,18 @@ var removeUserFromChannel = function(request, response) {
       response.send({'status': 'failed', 'error': 'Invalid channel name.'});
       return;
     }
-    if (socket.channels[channel]) {
+    if (channels[channel]) {
       var sessionIds = getNodejsSessionIdsFromUid(uid);
       for (var i in sessionIds) {
-        if (socket.channels[channel].sessionIds[sessionIds[i]]) {
-          delete socket.channels[channel].sessionIds[sessionIds[i]];
+        if (channels[channel].sessionIds[sessionIds[i]]) {
+          delete channels[channel].sessionIds[sessionIds[i]];
         }
       }
-      for (var authToken in socket.authenticatedClients) {
-        if (socket.authenticatedClients[authToken].uid == uid) {
-          var index = socket.authenticatedClients[authToken].channels.indexOf(channel);
+      for (var authToken in authenticatedClients) {
+        if (authenticatedClients[authToken].uid == uid) {
+          var index = authenticatedClients[authToken].channels.indexOf(channel);
           if (index != -1) {
-            delete socket.authenticatedClients[authToken].channels[index];
+            delete authenticatedClients[authToken].channels[index];
           }
         }
       }
@@ -514,11 +614,11 @@ var removeUserFromChannel = function(request, response) {
 /**
  * Remove an authToken from a channel.
  */
-var removeAuthTokenFromChannel = function(request, response) {
+var removeAuthTokenFromChannel = function (request, response) {
   var authToken = request.params.authToken || '';
   var channel = request.params.channel || '';
   if (authToken && channel) {
-    if (!socket.authenticatedClients[authToken]) {
+    if (!authenticatedClients[authToken]) {
       console.log('Invalid authToken: ' + uid);
       response.send({'status': 'failed', 'error': 'Invalid authToken.'});
       return;
@@ -528,17 +628,17 @@ var removeAuthTokenFromChannel = function(request, response) {
       response.send({'status': 'failed', 'error': 'Invalid channel name.'});
       return;
     }
-    if (socket.channels[channel]) {
+    if (channels[channel]) {
       var sessionIds = getNodejsSessionIdsFromAuthToken(authToken);
       for (var i in sessionIds) {
-        if (socket.channels[channel].sessionIds[sessionIds[i]]) {
-          delete socket.channels[channel].sessionIds[sessionIds[i]];
+        if (channels[channel].sessionIds[sessionIds[i]]) {
+          delete channels[channel].sessionIds[sessionIds[i]];
         }
       }
-      if (socket.authenticatedClients[authToken]) {
-        var index = socket.authenticatedClients[authToken].channels.indexOf(channel);
+      if (authenticatedClients[authToken]) {
+        var index = authenticatedClients[authToken].channels.indexOf(channel);
         if (index != -1) {
-          delete socket.authenticatedClients[authToken].channels[index];
+          delete authenticatedClients[authToken].channels[index];
         }
       }
       if (backendSettings.debug) {
@@ -561,16 +661,16 @@ var removeAuthTokenFromChannel = function(request, response) {
 /**
  * Remove a client (specified by session ID) from a channel.
  */
-var removeClientFromChannel = function(sessionId, channel) {
+var removeClientFromChannel = function (sessionId, channel) {
   if (sessionId && channel) {
-    if (!/^[0-9]+$/.test(sessionId) || !socket.clients.hasOwnProperty(sessionId)) {
+    if (!/^[0-9]+$/.test(sessionId) || !io.sockets.sockets.hasOwnProperty(sessionId)) {
       console.log("removeClientFromChannel: Invalid sessionId: " + sessionId);
     }
-    else if (!/^[a-z0-9_]+$/i.test(channel) || !socket.channels.hasOwnProperty(channel)) {
+    else if (!/^[a-z0-9_]+$/i.test(channel) || !channels.hasOwnProperty(channel)) {
       console.log("removeClientFromChannel: Invalid channel: " + channel);
     }
-    else if (socket.channels[channel].sessionIds[sessionId]) {
-      delete socket.channels[channels].sessionIds[sessionId];
+    else if (channels[channel].sessionIds[sessionId]) {
+      delete channels[channels].sessionIds[sessionId];
       if (backendSettings.debug) {
         console.log("Removed sessionId '" + sessionId + "' from channel '" + channel + "'");
       }
@@ -584,25 +684,149 @@ var removeClientFromChannel = function(sessionId, channel) {
 };
 
 /**
- * Setup a socket.clients{}.connection with uid, channels etc.
+ * Set the list of users a uid can see presence info about.
  */
-var setupClientConnection = function(sessionId, authData) {
-  if (!socket.clients[sessionId]) {
+var setUserPresenceList = function (uid, uids) {
+  var uid = request.params.uid || '';
+  var uidlist = request.params.uidlist.split(',') || [];
+  if (uid && uidlist) {
+    if (!/^\d+$/.test(uid)) {
+      console.log("Invalid uid: " + uid);
+      response.send({'status': 'failed', 'error': 'Invalid uid.'});
+      return;
+    }
+    if (uidlist.length == 0) {
+      console.log("Empty uidlist");
+      response.send({'status': 'failed', 'error': 'Empty uid list.'});
+      return;
+    }
+    for (var i in uidlist) {
+      if (!/^\d+$/.test(uidlist[i])) {
+        console.log("Invalid uid: " + uid);
+        response.send({'status': 'failed', 'error': 'Invalid uid.'});
+        return;
+      }
+    }
+    onlineUsers[uid] = uidlist;
+    response.send({'status': 'success'});
+  }
+  else {
+    response.send({'status': 'failed', 'error': 'Invalid parameters.'});
+  }
+}
+
+/**
+ * Cleanup after a socket has disconnected.
+ */
+var cleanupSocket = function (socket) {
+  if (backendSettings.debug) {
+    console.log("Cleaning up after socket " + socket.id);
+  }
+  for (var channel in channels) {
+    delete channels[channel].sessionIds[socket.id];
+  }
+  var uid = socket.uid;
+  if (uid != 0) {
+    if (presenceTimeoutIds[uid]) {
+      clearTimeout(presenceTimeoutIds[uid]);
+    }
+    presenceTimeoutIds[uid] = setTimeout(checkOnlineStatus, 2000, uid);
+  }
+  delete io.sockets.sockets[socket.id];
+}
+
+/**
+ * Check for any open sockets for uid.
+ */
+var checkOnlineStatus = function (uid) {
+  if (getNodejsSessionIdsFromUid(uid).length == 0) {
+    if (backendSettings.debug) {
+      console.log("Sending offline notification for", uid);
+    }
+    setUserOffline(uid);
+  }
+}
+
+/**
+ * Sends offline notification to sockets, the backend and cleans up our list.
+ */
+var setUserOffline = function (uid) {
+  sendPresenceChangeNotification(uid, 'offline');
+  delete onlineUsers[uid];
+  sendMessageToBackend({uid: uid, messageType: 'userOffline'}, function (response) { });
+}
+
+/**
+ * Set a content token.
+ */
+var setContentToken = function (request, response) {
+  var requestBody = '';
+  request.setEncoding('utf8');
+  request.on('data', function (chunk) {
+    requestBody += chunk;
+  });
+  request.on('end', function () {
+    try {
+      var message = JSON.parse(requestBody);
+      if (backendSettings.debug) {
+        console.log('setContentToken: message', message);
+      }
+    }
+    catch (exception) {
+      console.log('setContentToken: Invalid JSON "' + requestBody + '"',  exception);
+      response.send({error: 'Invalid JSON, error: ' + exception.toString()});
+      return;
+    }
+    tokenChannels[message.channel] = tokenChannels[message.channel] || {'tokens': {}, 'sockets': {}};
+    tokenChannels[message.channel].tokens[message.token] = true;
+    if (backendSettings.debug) {
+      console.log('setContentToken', message.token, 'for channel', message.channel);
+    }
+    response.send({status: 'ok'});
+  });
+}
+
+/**
+ * Setup a io.sockets.sockets{}.connection with uid, channels etc.
+ */
+var setupClientConnection = function (sessionId, authData) {
+  if (!io.sockets.sockets[sessionId]) {
     console.log("Client socket '" + sessionId + "' went away.");
     console.log(authData);
     return;
   }
-  socket.clients[sessionId].authToken = authData.authToken;
-  socket.clients[sessionId].uid = authData.uid;
-  if (backendSettings.debug) {
-    console.log("adding channels for uid " + authData.uid + ': ' + authData.channels.toString());
-  }
+  io.sockets.sockets[sessionId].authToken = authData.authToken;
+  io.sockets.sockets[sessionId].uid = authData.uid;
   for (var i in authData.channels) {
-    socket.channels[authData.channels[i]] = socket.channels[authData.channels[i]] || {'sessionIds': {}};
-    socket.channels[authData.channels[i]].sessionIds[sessionId] = sessionId;
+    channels[authData.channels[i]] = channels[authData.channels[i]] || {'sessionIds': {}};
+    channels[authData.channels[i]].sessionIds[sessionId] = sessionId;
   }
-  socket.clients[sessionId].send({'status': 'authenticated'});
-  process.emit('client-authenticated', sessionId);
+  if (authData.uid != 0) { 
+    var sendPresenceChange = !onlineUsers[authData.uid];
+    onlineUsers[authData.uid] = authData.presenceUids || [];
+    if (sendPresenceChange) {
+      sendPresenceChangeNotification(authData.uid, 'online');
+    }
+  }
+
+  for (var tokenChannel in authData.contentTokens) {
+    tokenChannels[tokenChannel] = tokenChannels[tokenChannel] || {'tokens': {}, 'sockets': {}};
+    for (var token in tokenChannels[tokenChannel].tokens) {
+      if (token == authData.contentTokens[tokenChannel]) {
+        tokenChannels[tokenChannel].sockets[sessionId] = true;
+        if (backendSettings.debug) {
+          console.log('Added token', token, 'for channel', tokenChannel, 'for socket', sessionId);
+        }
+      }
+    }
+  }
+
+  process.emit('client-authenticated', sessionId, authData);
+
+  if (backendSettings.debug) {
+    console.log("Added channels for uid " + authData.uid + ': ' + authData.channels.toString());
+    console.log('setupClientConnection', onlineUsers);
+  }
 };
 
 var server;
@@ -617,75 +841,73 @@ else {
 }
 server.all('/nodejs/*', checkServiceKeyCallback);
 server.post(backendSettings.publishUrl, publishMessage);
-server.get(backendSettings.serverStatsUrl, returnServerStats);
-server.get(backendSettings.getActiveChannelsUrl, getActiveChannels);
 server.get(backendSettings.kickUserUrl, kickUser);
+server.get(backendSettings.logoutUserUrl, logoutUser);
 server.get(backendSettings.addUserToChannelUrl, addUserToChannel);
 server.get(backendSettings.removeUserFromChannelUrl, removeUserFromChannel);
+server.get(backendSettings.setUserPresenceListUrl, setUserPresenceList);
 server.get(backendSettings.toggleDebugUrl, toggleDebug);
+server.post(backendSettings.contentTokenUrl, setContentToken);
+server.post(backendSettings.publishMessageToContentChannelUrl, publishMessageToContentChannel);
 server.get('*', send404);
 server.listen(backendSettings.port, backendSettings.host);
 console.log('Started ' + backendSettings.scheme + ' server.');
 
-var socket = io.listen(server, {port: backendSettings.port, resource: backendSettings.resource});
-socket.channels = {};
-socket.authenticatedClients = {};
+var io = socket_io.listen(server, {port: backendSettings.port, resource: backendSettings.resource});
+io.configure(function () {
+  io.set('transports', backendSettings.transports);
+  io.set('log level', backendSettings.logLevel);
+  if (backendSettings.jsEtag) {
+    io.enable('browser client etag');
+  }
+  if (backendSettings.jsMinification) {
+    io.enable('browser client minification');
+  }
+});
 
-socket.on('connection', function(client) {
-  process.emit('client-connection', client.sessionId);
+io.sockets.on('connection', function(socket) {
+  process.emit('client-connection', socket.id);
 
-  client.on('message', function(message) {
-    if (!message) {
-      return;
+  socket.on('authenticate', function(message) {
+    if (backendSettings.debug) {
+      console.log('Authenticating client with key "' + message.authToken + '"');
     }
+    authenticateClient(socket, message);
+  });
 
+  socket.on('message', function(message) {
     // If the message is from an active client, then process it.
-    if (socket.clients[client.sessionId] && message.hasOwnProperty('type') && message.type != 'authenticate') {
+    if (io.sockets.sockets[socket.id] && message.hasOwnProperty('type')) {
       if (backendSettings.debug) {
-        console.log('Received message from client ' + client.sessionId);
+        console.log('Received message from client ' + socket.id);
       }
 
       // If this message is destined for a channel, check that writing to 
       // channels from client sockets is allowed.
       if (message.hasOwnProperty('channel')) {
-        if (backenSettings.clientsCanWriteToChannels || channelIsClientWritable(message.channel)) {
-          process.emit('client-message', client.sessionId, message);
+        if (backendSettings.clientsCanWriteToChannels || channelIsClientWritable(message.channel)) {
+          process.emit('client-message', socket.id, message);
         }
         else if (backendSettings.debug) {
-          console.log('Received unauthorised message from client: cannot write to channel ' + client.sessionId);
+          console.log('Received unauthorised message from client: cannot write to channel ' + socket.id);
         }
       }
 
       // No channel, so this message is destined for one or more clients. Check
       // that this is allowed in the server configuration.
       if (backendSettings.clientsCanWriteToClients) {
-        process.emit('client-message', client.sessionId, message);
+        process.emit('client-message', socket.id, message);
       }
       else if (backendSettings.debug) {
-        console.log('Received unauthorised message from client: cannot write to client ' + client.sessionId);
+        console.log('Received unauthorised message from client: cannot write to client ' + socket.id);
       }
       return;
     }
-
-    // If the new client has an authToken that the server has verified, then
-    // initiate a connection with the client
-    if (socket.authenticatedClients[message.authToken]) {
-      if (backendSettings.debug) {
-        console.log('Reusing existing authentication data for key "' + message.authToken + '"');
-      }
-      setupClientConnection(client.sessionId, socket.authenticatedClients[message.authToken]);
-      return;
-    }
-
-    // Otherwise, authenticate the new client with the Drupal site
-    if (backendSettings.debug) {
-      console.log('Authenticating client with key "' + message.authToken + '"');
-    }
-    authenticateClient(client, message);
   });
 
-  client.on('disconnect', function () {
-    process.emit('client-disconnect', client.sessionId);
+  socket.on('disconnect', function () {
+    process.emit('client-disconnect', socket.id);
+    cleanupSocket(socket);
   });
 })
 .on('error', function(exception) {
@@ -714,7 +936,10 @@ var extensionsConfig = {
   'publishMessageToClient': publishMessageToClient,
   'addClientToChannel': addClientToChannel,
   'backendSettings': backendSettings,
-  'socket': socket
+  'channels': channels,
+  'io': io,
+  'tokenChannels': tokenChannels,
+  'sendMessageToBackend': sendMessageToBackend
 };
 invokeExtensions('setup', extensionsConfig);
 
