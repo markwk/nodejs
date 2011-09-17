@@ -122,6 +122,7 @@ var authenticateClient = function (client, message) {
  */
 var authenticateClientCallback = function (response) {
   var requestBody = '';
+  response.setEncoding('utf8');
   response.on('data', function (chunk) {
     requestBody += chunk;
   });
@@ -135,7 +136,6 @@ var authenticateClientCallback = function (response) {
       }
       return;
     }
-    response.setEncoding('utf8');
     var authData = false;
     try {
       authData = JSON.parse(requestBody);
