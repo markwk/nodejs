@@ -121,7 +121,11 @@ var authenticateClient = function (client, message) {
  * Handle authentication call response.
  */
 var authenticateClientCallback = function (response) {
+  var requestBody = '';
   response.on('data', function (chunk) {
+    requestBody += chunk;
+  });
+  response.on('end', function () {
     if (response.statusCode == 404) {
       if (backendSettings.debug) {
         console.log('Backend authentication url not found, full response info:', response);
@@ -134,12 +138,12 @@ var authenticateClientCallback = function (response) {
     response.setEncoding('utf8');
     var authData = false;
     try {
-      authData = JSON.parse(chunk);
+      authData = JSON.parse(requestBody);
     }
     catch (exception) {
       console.log('Failed to parse authentication message:', exception);
       if (backendSettings.debug) {
-        console.log('Failed message string: ' + chunk);
+        console.log('Failed message string: ' + requestBody);
       }
       return;
     }
@@ -208,15 +212,19 @@ var checkServiceKey = function (serviceKey) {
  * Http callback - set the debug flag.
  */
 var toggleDebug = function (request, response) {
+  var requestBody = '';
   request.setEncoding('utf8');
   request.on('data', function (chunk) {
+    requestBody += chunk;
+  });
+  request.on('end', function () {
     try {
-      var toggle = JSON.parse(chunk);
+      var toggle = JSON.parse(requestBody);
       backendSettings.debug = toggle.debug;
       response.send({debug: toggle.debug});
     }
     catch (exception) {
-      console.log('toggleDebug: Invalid JSON "' + chunk + '"', exception);
+      console.log('toggleDebug: Invalid JSON "' + requestBody + '"', exception);
       response.send({error: 'Invalid JSON, error: ' + e.toString()});
     }
   });
@@ -226,17 +234,20 @@ var toggleDebug = function (request, response) {
  * Http callback - read in a JSON message and publish it to interested clients.
  */
 var publishMessage = function (request, response) {
-  var sentCount = 0;
+  var sentCount = 0, requestBody = '';
   request.setEncoding('utf8');
   request.on('data', function (chunk) {
+    requestBody += chunk;
+  });
+  request.on('end', function () {
     try {
-      var message = JSON.parse(chunk);
+      var message = JSON.parse(requestBody);
       if (backendSettings.debug) {
         console.log('publishMessage: message', message);
       }
     }
     catch (exception) {
-      console.log('publishMessage: Invalid JSON "' + chunk + '"',  exception);
+      console.log('publishMessage: Invalid JSON "' + requestBody + '"',  exception);
       response.send({error: 'Invalid JSON, error: ' + exception.toString()});
       return;
     }
@@ -284,17 +295,20 @@ var publishMessageToChannel = function (message) {
  * Publish a message to clients subscribed to a channel.
  */
 var publishMessageToContentChannel = function (request, response) {
-  var sentCount = 0;
+  var sentCount = 0, requestBody = '';
   request.setEncoding('utf8');
   request.on('data', function (chunk) {
+    requestBody += chunk;
+  });
+  request.on('end', function () {
     try {
-      var message = JSON.parse(chunk);
+      var message = JSON.parse(requestBody);
       if (backendSettings.debug) {
         console.log('publishMessageToContentChannel: message', message);
       }
     }
     catch (exception) {
-      console.log('publishMessageToContentChannel: Invalid JSON "' + chunk + '"',  exception);
+      console.log('publishMessageToContentChannel: Invalid JSON "' + requestBody + '"', exception);
       response.send({error: 'Invalid JSON, error: ' + exception.toString()});
       return;
     }
@@ -746,16 +760,20 @@ var setUserOffline = function (uid) {
  * Set a content token.
  */
 var setContentToken = function (request, response) {
+  var requestBody = '';
   request.setEncoding('utf8');
   request.on('data', function (chunk) {
+    requestBody += chunk;
+  });
+  request.on('end', function () {
     try {
-      var message = JSON.parse(chunk);
+      var message = JSON.parse(requestBody);
       if (backendSettings.debug) {
         console.log('setContentToken: message', message);
       }
     }
     catch (exception) {
-      console.log('setContentToken: Invalid JSON "' + chunk + '"',  exception);
+      console.log('setContentToken: Invalid JSON "' + requestBody + '"',  exception);
       response.send({error: 'Invalid JSON, error: ' + exception.toString()});
       return;
     }
