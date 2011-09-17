@@ -21,56 +21,6 @@ var channels = {},
     tokenChannels = {},
     extensions = [];
 
-/**
- * Socket lifetime, token-identified channels.
- *
- * There are use cases where we want to send messages that update some content,
- * but only to those users currently viewing that content. The following
- * summarises how we might implement that:
- *
- * 1. Drupal sends a strong token and a channel name to node.js. The token is
- *    used as an auth identifier, allowing a client connection that presents
- *    it to node.js access to the channel associated with the token.
- *
- * tokenChannels[channelName] = tokenChannels[channelName] || {};
- * tokenChannels[channelName].sids = {};
- * tokenChannels[channelName][token] = true;
- *
- * 1.5. Drupal also sends a flag, anonymousOnly, with each content channel. The
- *      flag is used by node.js to decide if it can broadcast content updates 
- *      to all subscribed clients, or only anonymous clients. Some pieces of 
- *      content are rendered differently for different users, so we can't just
- *      broadcast them. For anon, where the content is the same, we broadcast,
- *      for logged in users, we send a 'content changed' message, and leave it
- *      up to client-side js to fetch the updated content.
- * 2. When a client connects with a channel token, server.js adds that client's
- *    socket sessionId to that channel, replacing false above.
- *
- * if (tokenChannels[channelName][clientToken] == true) {
- *   tokenChannels[channelName].sids[] = sessionId;
- *   delete tokenChannels[channelName];
- * }
- *
- * 3. When a client disconnects, their subscriptions from tokenChannels should
- *    be removed.
- *
- *  for (var channel in channels) {
- *    delete channels[channel].sessionIds[socket.id];
- *  }
- *
- * 4. Modules wishing to use this API need to:
- *    a) generate a strong token and channel name pair, and send it as a
- *       message to node.js for each http request from a client who is to see
- *       updates to the channel (we should probably have an API function in
- *       nodejs.module for this)
- *    b) implement the client-side js to handle updates to the DOM in response
- *       to messages sent to the channel from a)
- *    c) send messages to node.js when the content they care about is changed
- *
- * The newly added nodejs_watchdog module is the first obvious example of a
- * module that can use this functionality.
- */
-
 try {
   var backendSettings = vm.runInThisContext(fs.readFileSync(process.cwd() + '/nodejs.config.js'));
   backendSettings.extensions = backendSettings.extensions || [];
