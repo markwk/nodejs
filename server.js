@@ -108,7 +108,7 @@ var authenticateClient = function (client, message) {
     if (backendSettings.debug) {
       console.log('Reusing existing authentication data for key:', message.authToken, ', client id:', client.id);
     }
-    setupClientConnection(client.id, authenticatedClients[message.authToken]);
+    setupClientConnection(client.id, authenticatedClients[message.authToken], message.contentTokens);
   }
   else {
     message.messageType = 'authenticate';
@@ -151,18 +151,16 @@ var authenticateClientCallback = function (response) {
       console.log('Invalid service key "', authData.serviceKey, '"');
       return;
     }
-    if (authData.nodejs_valid_auth_key) {
+    if (authData.nodejsValidAuthToken) {
       if (backendSettings.debug) {
         console.log('Valid login for uid "', authData.uid, '"');
       }
-      setupClientConnection(authData.clientId, authData);
-      // Don't cache contentTokens, we only want to use them once.
-      authData.contentTokens = {};
-      authenticatedClients[authData.auth_key] = authData;
+      setupClientConnection(authData.clientId, authData, authData.contentTokens);
+      authenticatedClients[authData.authToken] = authData;
     }
     else {
       console.log('Invalid login for uid "', authData.uid, '"');
-      delete authenticatedClients[authData.auth_key];
+      delete authenticatedClients[authData.authToken];
     }
   });
 }
@@ -392,12 +390,13 @@ var kickUser = function (request, response) {
 var logoutUser = function (request, response) {
   var authToken = request.params.authtoken || '';
   if (authToken) {
+    console.log('Logging out http session', authToken);
     // Delete the user from the authenticatedClients hash.
     delete authenticatedClients[authToken];
 
     // Destroy any socket connections associated with this authToken.
     for (var clientId in io.sockets.sockets) {
-      if (io.sockets.sockets[clientId].authToken == request.params.authToken) {
+      if (io.sockets.sockets[clientId].authToken == authToken) {
         delete io.sockets.sockets[clientId];
         // Delete any channel entries for this clientId.
         for (var channel in channels) {
@@ -423,7 +422,7 @@ var getNodejsSessionIdsFromUid = function (uid) {
     }
   }
   if (backendSettings.debug) {
-    console.log('getNodejsSessionIdsFromUid', {uid: sessionIds});
+    console.log('getNodejsSessionIdsFromUid', {uid: uid, sessionIds: sessionIds});
   }
   return sessionIds;
 }
@@ -439,7 +438,7 @@ var getNodejsSessionIdsFromAuthToken = function (authToken) {
     }
   }
   if (backendSettings.debug) {
-    console.log('getNodejsSessionIdsFromAuthToken', {authToken: sessionIds});
+    console.log('getNodejsSessionIdsFromAuthToken', {authToken: authToken, sessionIds: sessionIds});
   }
   return sessionIds;
 }
@@ -722,7 +721,7 @@ var setUserPresenceList = function (uid, uids) {
  */
 var cleanupSocket = function (socket) {
   if (backendSettings.debug) {
-    console.log("Cleaning up after socket " + socket.id);
+    console.log("Cleaning up after socket id", socket.id, 'uid', socket.uid);
   }
   for (var channel in channels) {
     delete channels[channel].sessionIds[socket.id];
@@ -796,7 +795,7 @@ var setContentToken = function (request, response) {
 /**
  * Setup a io.sockets.sockets{}.connection with uid, channels etc.
  */
-var setupClientConnection = function (sessionId, authData) {
+var setupClientConnection = function (sessionId, authData, contentTokens) {
   if (!io.sockets.sockets[sessionId]) {
     console.log("Client socket '" + sessionId + "' went away.");
     console.log(authData);
@@ -817,10 +816,10 @@ var setupClientConnection = function (sessionId, authData) {
   }
  
   var clientToken = '';
-  for (var tokenChannel in authData.contentTokens) {
+  for (var tokenChannel in contentTokens) {
     tokenChannels[tokenChannel] = tokenChannels[tokenChannel] || {'tokens': {}, 'sockets': {}};
 
-    clientToken = authData.contentTokens[tokenChannel];
+    clientToken = contentTokens[tokenChannel];
     if (tokenChannels[tokenChannel].tokens[clientToken]) {
       tokenChannels[tokenChannel].sockets[sessionId] = true;
       if (backendSettings.debug) {
