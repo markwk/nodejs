@@ -14,6 +14,12 @@ Drupal.behaviors.nodejs = {
 };
 
 Drupal.Nodejs.runCallbacks = function (message) {
+  // It's possible that this message originated from an ajax request from the
+  // client associated with this socket.
+  if (message.clientSocketId == Drupal.Nodejs.socket.socket.sessionid) {
+    return;
+  }
+
   if (message.callback && $.isFunction(Drupal.Nodejs.callbacks[message.callback].callback)) {
     try {
       Drupal.Nodejs.callbacks[message.callback].callback(message);
@@ -57,7 +63,6 @@ Drupal.Nodejs.connect = function () {
   var scheme = Drupal.settings.nodejs.secure ? 'https' : 'http',
       url = scheme + '://' + Drupal.settings.nodejs.host + ':' + Drupal.settings.nodejs.port;
   Drupal.settings.nodejs.connectTimeout = Drupal.settings.nodejs.connectTimeout || 5000;
-  // Check whether socket.io's io-object is defined.
   if (typeof io === 'undefined') {
      return false;
   }
@@ -66,9 +71,20 @@ Drupal.Nodejs.connect = function () {
     Drupal.Nodejs.sendAuthMessage();
     Drupal.Nodejs.runSetupHandlers('connect');
     Drupal.Nodejs.socket.on('message', Drupal.Nodejs.runCallbacks);
+
+    // Monkey-patch Drupal.ajax.prototype.beforeSerialize to auto-magically
+    // send sessionId for AJAX requests so we can exclude the current browser
+    // window from resulting notifications. We do this so that modules can hook
+    // in to other modules ajax requests without having to patch them.
+    Drupal.Nodejs.originalBeforeSerialize = Drupal.ajax.prototype.beforeSerialize;
+    Drupal.ajax.prototype.beforeSerialize = function(element_settings, options) {
+      options.data['nodejs_client_socket_id'] = Drupal.Nodejs.socket.socket.sessionid;
+      return Drupal.Nodejs.originalBeforeSerialize(element_settings, options);
+    };
   });
   Drupal.Nodejs.socket.on('disconnect', function() {
     Drupal.Nodejs.runSetupHandlers('disconnect');
+    Drupal.ajax.prototype.beforeSerialize = Drupal.Nodejs.originalBeforeSerialize;
   });
   setTimeout("Drupal.Nodejs.checkConnection()", Drupal.settings.nodejs.connectTimeout + 250);
 };
