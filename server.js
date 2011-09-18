@@ -108,7 +108,7 @@ var authenticateClient = function (client, message) {
     if (backendSettings.debug) {
       console.log('Reusing existing authentication data for key:', message.authToken, ', client id:', client.id);
     }
-    setupClientConnection(client.id, authenticatedClients[message.authToken]);
+    setupClientConnection(client.id, authenticatedClients[message.authToken], message.contentTokens);
   }
   else {
     message.messageType = 'authenticate';
@@ -155,9 +155,7 @@ var authenticateClientCallback = function (response) {
       if (backendSettings.debug) {
         console.log('Valid login for uid "', authData.uid, '"');
       }
-      setupClientConnection(authData.clientId, authData);
-      // Don't cache contentTokens, we only want to use them once.
-      authData.contentTokens = {};
+      setupClientConnection(authData.clientId, authData, authData.contentTokens);
       authenticatedClients[authData.auth_key] = authData;
     }
     else {
@@ -796,7 +794,7 @@ var setContentToken = function (request, response) {
 /**
  * Setup a io.sockets.sockets{}.connection with uid, channels etc.
  */
-var setupClientConnection = function (sessionId, authData) {
+var setupClientConnection = function (sessionId, authData, contentTokens) {
   if (!io.sockets.sockets[sessionId]) {
     console.log("Client socket '" + sessionId + "' went away.");
     console.log(authData);
@@ -817,10 +815,10 @@ var setupClientConnection = function (sessionId, authData) {
   }
  
   var clientToken = '';
-  for (var tokenChannel in authData.contentTokens) {
+  for (var tokenChannel in contentTokens) {
     tokenChannels[tokenChannel] = tokenChannels[tokenChannel] || {'tokens': {}, 'sockets': {}};
 
-    clientToken = authData.contentTokens[tokenChannel];
+    clientToken = contentTokens[tokenChannel];
     if (tokenChannels[tokenChannel].tokens[clientToken]) {
       tokenChannels[tokenChannel].sockets[sessionId] = true;
       if (backendSettings.debug) {
