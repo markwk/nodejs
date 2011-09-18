@@ -427,11 +427,11 @@ function nodejs_message_handler() {
 function nodejs_auth_check($message) {
   $uid = db_query("SELECT uid FROM {sessions} WHERE MD5(sid) = :auth_key", array(':auth_key' => $message['authToken']))->fetchField();
   $auth_user = $uid > 0 ? user_load($uid) : drupal_anonymous_user();
-  $auth_user->auth_key = $message['authToken'];
-  $auth_user->nodejs_valid_auth_key = $uid !== FALSE;
+  $auth_user->authToken = $message['authToken'];
+  $auth_user->nodejsValidAuthToken = $uid !== FALSE;
   $auth_user->clientId = $message['clientId'];
 
-  if ($auth_user->nodejs_valid_auth_key) {
+  if ($auth_user->nodejsValidAuthToken) {
     // Get the list of channels I have access to.
     $auth_user->channels = array();
     foreach (module_implements('nodejs_user_channels') as $module) {
@@ -560,6 +560,14 @@ function nodejs_add_user_to_channel($uid, $channel) {
   }
 }
 
+/**
+ * Get the client socket id associated with this request.
+ */
+function nodejs_get_client_socket_id() {
+  $client_socket_id = isset($_POST['nodejs_client_socket_id']) ? $_POST['nodejs_client_socket_id'] : '';
+  return preg_match('/^\d+$/', $client_socket_id) ? $client_socket_id : '';
+}
+
 class Nodejs {
   public static $messages = array();
 
@@ -594,6 +602,7 @@ class Nodejs {
   public static function sendMessage(StdClass $message) {
     self::initConfig();
     drupal_alter('nodejs_message', $message);
+    $message->clientSocketId = nodejs_get_client_socket_id();
     $options = array(
       'method' => 'POST',
       'data' => drupal_json_encode($message),
@@ -614,6 +623,7 @@ class Nodejs {
 
   public static function sendContentTokenMessage($message) {
     self::initConfig();
+    $message->clientSocketId = nodejs_get_client_socket_id();
     $options = array(
       'method' => 'POST',
       'data' => drupal_json_encode($message),
