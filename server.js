@@ -151,16 +151,16 @@ var authenticateClientCallback = function (response) {
       console.log('Invalid service key "', authData.serviceKey, '"');
       return;
     }
-    if (authData.nodejs_valid_auth_key) {
+    if (authData.nodejsValidAuthToken) {
       if (backendSettings.debug) {
         console.log('Valid login for uid "', authData.uid, '"');
       }
       setupClientConnection(authData.clientId, authData, authData.contentTokens);
-      authenticatedClients[authData.auth_key] = authData;
+      authenticatedClients[authData.authToken] = authData;
     }
     else {
       console.log('Invalid login for uid "', authData.uid, '"');
-      delete authenticatedClients[authData.auth_key];
+      delete authenticatedClients[authData.authToken];
     }
   });
 }
@@ -390,12 +390,13 @@ var kickUser = function (request, response) {
 var logoutUser = function (request, response) {
   var authToken = request.params.authtoken || '';
   if (authToken) {
+    console.log('Logging out http session', authToken);
     // Delete the user from the authenticatedClients hash.
     delete authenticatedClients[authToken];
 
     // Destroy any socket connections associated with this authToken.
     for (var clientId in io.sockets.sockets) {
-      if (io.sockets.sockets[clientId].authToken == request.params.authToken) {
+      if (io.sockets.sockets[clientId].authToken == authToken) {
         delete io.sockets.sockets[clientId];
         // Delete any channel entries for this clientId.
         for (var channel in channels) {
@@ -421,7 +422,7 @@ var getNodejsSessionIdsFromUid = function (uid) {
     }
   }
   if (backendSettings.debug) {
-    console.log('getNodejsSessionIdsFromUid', {uid: sessionIds});
+    console.log('getNodejsSessionIdsFromUid', {uid: uid, sessionIds: sessionIds});
   }
   return sessionIds;
 }
@@ -437,7 +438,7 @@ var getNodejsSessionIdsFromAuthToken = function (authToken) {
     }
   }
   if (backendSettings.debug) {
-    console.log('getNodejsSessionIdsFromAuthToken', {authToken: sessionIds});
+    console.log('getNodejsSessionIdsFromAuthToken', {authToken: authToken, sessionIds: sessionIds});
   }
   return sessionIds;
 }
@@ -720,7 +721,7 @@ var setUserPresenceList = function (uid, uids) {
  */
 var cleanupSocket = function (socket) {
   if (backendSettings.debug) {
-    console.log("Cleaning up after socket " + socket.id);
+    console.log("Cleaning up after socket id", socket.id, 'uid', socket.uid);
   }
   for (var channel in channels) {
     delete channels[channel].sessionIds[socket.id];
