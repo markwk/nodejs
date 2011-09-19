@@ -1,0 +1,501 @@
+<?php
+
+/**
+ * Kick a user off the node.js server.
+ *
+ * @param mixed $uid 
+ */
+function nodejs_kick_user($uid) {
+  $response = nodejs::kickUser($uid);
+  if (isset($response->error)) {
+    watchdog('nodejs', t('Error kicking uid "%uid" from the Node.js server: [%code] %error', array('%uid' => $uid, '%code' => $response->code, '%error' => $response->error)));
+    return FALSE;
+  }
+  else {
+    return $result;
+  }
+}
+
+/**
+ * Broadcast a message to all clients.
+ * 
+ * @param string $subject
+ * @param string $body
+ */
+function nodejs_broadcast_message($subject, $body) {
+  $message = (object) array(
+    'broadcast' => TRUE,
+    'data' => (object) array(
+      'subject' => $subject,
+      'body' => $body,
+    ),
+    'channel' => 'nodejs_notify',
+  );
+  nodejs_enqueue_message($message);
+}
+
+/**
+ * Send a message to given user.
+ * 
+ * @param int $uid
+ * @param string $subject
+ * @param string $body
+ */
+function nodejs_send_user_message($uid, $subject, $body) {
+  $message = (object) array(
+    'broadcast' => FALSE,
+    'data' => (object) array(
+      'subject' => $subject,
+      'body' => $body,
+    ),
+    'channel' => 'nodejs_user_' . $uid,
+    'callback' => 'nodejsNotify',
+  );
+  nodejs_enqueue_message($message);
+}
+
+/**
+ * Implements hook_theme().
+ */
+function nodejs_theme($existing, $type, $theme, $path) {
+  return array(
+    'nodejs_stats_page' => array(
+      'variables' => array('stats' => new StdClass()),
+    ),
+  );
+}
+
+/**
+ * Implements hook_init().
+ */
+function nodejs_init() {
+  _node_js_drupal_register_shutdown_function(array('nodejs', 'sendMessages'));
+  $_SESSION['nodejs_config'] = $nodejs_config = nodejs_get_config();
+  if (isset($nodejs_config['serviceKey'])) {
+    unset($nodejs_config['serviceKey']);
+  }
+
+  drupal_add_js(drupal_get_path('module', 'nodejs') . '/socket_io/support/socket.io-client/socket.io.js', 'module', 'footer');
+  drupal_add_js(drupal_get_path('module', 'nodejs') . '/nodejs.js', 'module', 'footer');
+  drupal_add_js(drupal_get_path('module', 'nodejs_notify') . '/nodejs_notify.js', 'module', 'footer');
+  drupal_add_js(drupal_get_path('module', 'nodejs_ajax') . '/nodejs_ajax.js', 'module', 'header');
+
+  if (isset($nodejs_config)) {
+    foreach ($nodejs_config as $key => $value) {
+      drupal_add_js(array('nodejs' => array($key => $value)), 'setting');
+    }
+  }
+
+  foreach (nodejs_get_js_handlers() as $handler_file) {
+    drupal_add_js($handler_file, 'module', 'footer');
+  }
+}
+
+function _node_js_drupal_register_shutdown_function($callback = NULL) {
+  // We cannot use drupal_static() here because the static cache is reset during
+  // batch processing, which breaks batch handling.
+  static $callbacks = array();
+
+  if (isset($callback)) {
+    // Only register the internal shutdown function once.
+    if (empty($callbacks)) {
+      //register_shutdown_function('_drupal_shutdown_function');
+    }
+    $args = func_get_args();
+    array_shift($args);
+    // Save callback and arguments
+    $callbacks[] = array(
+             'callback' => $callback,
+             'arguments' => $args,
+             );
+  }
+  return $callbacks;
+}
+
+/**
+ * Get a list of javascript handler files.
+ */
+function nodejs_get_js_handlers() {
+  $handlers = module_invoke_all('nodejs_handlers_info');
+  drupal_alter('nodejs_js_handlers', $handlers);
+  return $handlers;
+}
+
+/**
+ * Implements hook_menu().
+ */
+function nodejs_menu() {
+  return array(
+    'admin/config/nodejs' => array(
+      'title' => 'Node.js configuration',
+      'description' => 'Adjust node.js settings.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('nodejs_settings'),
+      'access arguments' => array('administer site configuration'),
+      'file' => 'nodejs.admin.inc',
+    ),
+    'nodejs/auth/%' => array(
+      'title' => 'Who goes there?',
+      'page callback' => 'nodejs_auth_check',
+      'page arguments' => array(2),
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+    ),
+    'nodejs/stats' => array(
+      'title' => 'Node.js server stats',
+      'page callback' => 'nodejs_server_stats_page',
+      'access arguments' => array('access node.js server stats'),
+      'type' => MENU_CALLBACK,
+    ),
+    'nodejs/user/channel/add' => array(
+      'title' => 'Node.js server stats',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('nodejs_add_user_to_channel_form'),
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+    ),
+  );
+}
+
+/**
+ * Implements hook_perm().
+ */
+function nodejs_perm() {
+  return array('access node.js server stats');
+ }
+
+
+/**
+ * Get a list of active channels from the node.js server.
+ * 
+ * @access public
+ * @return array
+ */
+function nodejs_get_channels() {
+  $response = nodejs::getChannels();
+  if (isset($response->error)) {
+    watchdog('nodejs', t('Error getting channel list from Node.js server: [%code] %error', array('%code' => $response->code, '%error' => $response->error)));
+    return array();
+  }
+  else {
+    $channels = drupal_json_decode($response->data);
+    return (array) $channels;
+  }
+}
+
+/**
+ * Form callback, add a user to a channel.
+ * 
+ * @param mixed $form 
+ * @param mixed $form_state 
+ * @return array
+ */
+function nodejs_add_user_to_channel_form($form, $form_state) {
+  $form = array();
+  $form['nodejs_uid'] = array(
+    '#type' => 'textfield',
+    '#description' => t('The user uid to add to a channel.'),
+    '#title' => t('User uid to add'),
+  );
+  $form['nodejs_channel'] = array(
+    '#type' => 'textfield',
+    '#description' => t('The name of the channel to give a user access to.'),
+    '#title' => t('Channel to add'),
+  );
+  $form['nodejs_submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Add user'),
+  );
+  return $form;
+}
+
+/**
+ * Form submit callback - add a user to a channel on the Node.js server.
+ * 
+ * @param mixed $form
+ * @param mixed $form_state
+ */
+function nodejs_add_user_to_channel_form_submit($form, &$form_state) {
+  $values = (object) $form_state['values'];
+  if (nodejs_add_user_to_channel($values->nodejs_uid, $values->nodejs_channel)) {
+    drupal_set_message(t("Added uid %uid to %channel.", array('%uid' => $values->nodejs_uid, '%channel' => $values->nodejs_channel)));
+  }
+  else {
+    drupal_set_message(t("Failed to add uid %uid to %channel.", array('%uid' => $$values->nodejs_uid, '%channel' => $values->nodejs_channel)), 'error');
+  }
+}
+
+/**
+ * Form validate callback - add a user to a channel on the Node.js server.
+ * 
+ * @param mixed $form
+ * @param mixed $form_state
+ * @return void
+ */
+function nodejs_add_user_to_channel_form_validate($form, &$form_state) {
+  $values = (object) $form_state['values'];
+  if (!preg_match('/^\d+$/', $values->nodejs_uid)) {
+    form_set_error('nodejs_uid', t('Invalid uid - please enter a numeric uid.'));
+  }
+  if (!preg_match('/^([a-z0-9_]+)$/i', $values->nodejs_channel)) {
+    form_set_error('nodejs_channel', t('Invalid channel name - only numbers, letters and underscores are allowed.'));
+  }
+}
+
+/**
+ * Enqueue a message for sending at the end of the request.
+ * 
+ * @param StdClass $message 
+ */
+function nodejs_enqueue_message(StdClass $message) {
+  nodejs::enqueueMessage($message);
+}
+
+/**
+ * Send a message immediately.
+ * 
+ * @param StdClass $message 
+ */
+function nodejs_send_message(StdClass $message) {
+  return nodejs::sendMessage($message);
+}
+
+/**
+ * Menu callback: renders overall stats for the Node.js server.
+ */
+function nodejs_server_stats_page() {
+  $page = array(
+    '#type' => 'page',
+    'content' => array(
+      'nodejs' => array(
+        '#markup' => theme('nodejs_stats_page', array('stats' => nodejs_get_server_stats())),
+      ),
+    ),
+  );
+  return $page;
+}
+
+/**
+ * Implements hook_nodejs_user_channels().
+ */
+function nodejs_nodejs_user_channels($account) {
+  if (variable_get('nodejs_enable_userchannel', TRUE) && $account->uid) {
+    return array('nodejs_user_' . $account->uid);
+  }
+}
+
+/**
+ * Menu callback: checks the given key to see if it matches a valid session.
+ */
+function nodejs_auth_check($auth_key) {
+  $uid = db_query("SELECT uid FROM {sessions} WHERE MD5(sid) = :auth_key", array(':auth_key' => $auth_key))->fetchField();
+  $auth_user = $uid > 0 ? user_load($uid) : drupal_anonymous_user();
+  $auth_user->nodejs_valid_auth_key = $uid !== FALSE;
+  $auth_user->channels = module_invoke_all('nodejs_user_channels', $auth_user);
+  $nodejs_config = nodejs_get_config(); 
+  $auth_user->serviceKey = $nodejs_config['serviceKey'];
+
+  drupal_json($auth_user);
+  exit();
+}
+
+/**
+ * Get nodejs server config.
+ *
+ * @return array
+ */
+function nodejs_get_config() {
+  $defaults = array(
+    'scheme' => variable_get('nodejs_server_scheme', 'http'),
+    'secure' => variable_get('nodejs_server_scheme', 'http') == 'https' ? 1 : 0,
+    'host' => variable_get('nodejs_server_host', 'localhost'),
+    'port' => variable_get('nodejs_server_port', '8080'),
+    'resource' => '/node.js/realtime',
+    'authkey' => md5(session_id()),
+    'serviceKey' => '',
+  );
+  return variable_get('nodejs_config', array()) + $defaults;
+}
+
+/**
+ * Get the URL of a Node.js callback.
+ *
+ * @param array $config the result of nodejs_get_config()
+ * @param string $callback the path to call on Node.js server (without leading /)
+ * @return string
+ */
+function nodejs_get_url($config, $callback = '') {
+  return $config['scheme'] . '://' . $config['host'] . ':' . $config['port'] . '/' . $callback;
+}
+
+/**
+ * Theme the server stats page
+ * 
+ * @param StdClass $stats 
+ * @return string
+ */
+function theme_nodejs_stats_page(array $variables) {
+  $stats = $variables['stats'];
+  if (empty($stats)) {
+    return "Error reading Node.js server stats.";
+  }
+  else {
+    $html = '<div class="nodejs-server-stats">';
+    $html .= '<h3>Authenticated clients</h3>';
+    if (is_array($stats->authenticatedClients) && count($stats->authenticatedClients)) {
+      $html .= '<ul>';
+      foreach ($stats->authenticatedClients as $client) {
+        if (isset($client->user->uid)) {
+          $html .= '<li>' . $client->user->name . ' (UID: ' . $client->user->uid . ')</li>';
+        }
+      }
+      $html .= '</ul>';
+    }
+    else {
+      $html .= '<p>There are no authenticated clients</p>';
+    }
+    $html .= '<h3>Channels</h3>';
+    if (is_array($stats->channels) && count($stats->channels)) {
+      $html .= '<ul>';
+      foreach ($stats->channels as $channel) {
+        if (!empty($channel)) {
+          $html .= '<li>' . $channel . '</li>';
+        }
+      }
+      $html .= '</ul>';
+    }
+    else {
+      $html .= '<p>There are no active channels</p>';
+    }
+    $html .= '</div>';
+    return $html;
+  }
+}
+
+/**
+ * Get the stats from the node.js server.
+ * 
+ * @return StdClass server stats
+ */
+function nodejs_get_server_stats() {
+  $config = nodejs_get_config();
+  $result = drupal_http_request(nodejs_get_url($config, 'nodejs/stats/server'));
+  if (isset($result->error)) {
+    return (object) array();
+  }
+  else {
+    return (object) json_decode($result->data);
+  }
+}
+
+/**
+ * Remove a user from a channel.
+ * 
+ * @param mixed $uid 
+ * @param mixed $channel 
+ * @return boolean
+ */
+function nodejs_remove_user_from_channel($uid, $channel) {
+  $result = nodejs::removeUserFromChannel($uid, $channel);
+  if (isset($result->error)) {
+    $params = array(
+      '%uid' => $uid,
+      '%channel' => $channel,
+      '%code' => $result->code,
+      '%error' => $result->error,
+    );
+    watchdog('nodejs', t('Error removing user %uid from channel %channel on Node.js server: [%code] %error', $params));
+    return (object) array();
+  }
+  else {
+    return TRUE;
+  }
+}
+
+/**
+ * Add a user to a channel.
+ * 
+ * @param mixed $uid 
+ * @param mixed $channel 
+ * @return boolean
+ */
+function nodejs_add_user_to_channel($uid, $channel) {
+  $result = nodejs::addUserToChannel($uid, $channel);
+  if (isset($result->error)) {
+    $params = array(
+      '%uid' => $uid,
+      '%channel' => $channel,
+      '%code' => $result->code,
+      '%error' => $result->error,
+    );
+    watchdog('nodejs', t('Error adding user %uid to channel %channel on Node.js server: [%code] %error', $params));
+    return (object) array();
+  }
+  else {
+    return TRUE;
+  }
+}
+
+class nodejs {
+  public static $messages = array();
+
+  public static $config = NULL;
+
+  public static $baseUrl = NULL;
+
+  public static $headers = NULL;
+
+  public static function initConfig() {
+    if (!isset(self::$config)) {
+      self::$config = nodejs_get_config();
+      self::$headers = array('nodejs-Service-Key' => self::$config['serviceKey']);
+      self::$baseUrl = nodejs_get_url(self::$config);
+    }
+  }
+
+  public static function getMessages() {
+    return self::$messages;
+  }
+
+  public static function enqueueMessage(StdClass $message) {
+    self::$messages[] = $message;
+  }
+
+  public static function sendMessages() {
+    foreach (self::$messages as $message) {
+      self::sendMessage($message);
+    }
+  }
+
+  public static function sendMessage(StdClass $message) {
+    self::initConfig();
+    drupal_alter('nodejs_message', $message);
+    $options = array(
+      'method' => 'POST', 
+      'data' => drupal_json_encode($message),
+      'headers' => self::$headers,
+    );
+    return drupal_http_request(self::$baseUrl . 'nodejs/publish', $options);
+  }
+  
+  public static function kickUser($uid) {
+    self::initConfig();
+    return drupal_http_request(self::$baseUrl . "nodejs/user/kick/$uid", array('headers' => self::$headers));
+  }
+
+  public static function addUserToChannel($uid, $channel) {
+    self::initConfig();
+    return drupal_http_request(self::$baseUrl . "nodejs/user/channel/add/$channel/$uid", array('headers' => self::$headers));
+  }
+
+  public static function removeUserFromChannel($uid, $channel) {
+    self::initConfig();
+    return drupal_http_request(self::$baseUrl . "nodejs/user/channel/remove/$channel/$uid", array('headers' => self::$headers));
+  }
+
+  public static function getChannels() {
+    self::initConfig();
+    return drupal_http_request(self::$baseUrl . 'nodejs/stats/channels', array('headers' => self::$headers));
+  }
+}
+
