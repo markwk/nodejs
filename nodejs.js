@@ -24,7 +24,7 @@ Drupal.Nodejs.runCallbacks = function (message) {
 
 Drupal.behaviors.nodejs = {
 
-  attach: function (context, settings) {
+  attach: function (context) {
     if (!Drupal.Nodejs.socket) {
       Drupal.Nodejs.socket = new io.Socket(
         Drupal.settings.nodejs.host,

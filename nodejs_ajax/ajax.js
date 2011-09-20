@@ -17,8 +17,9 @@ Drupal.ajax = Drupal.ajax || {};
 /**
  * Attaches the Ajax behavior to each Ajax form element.
  */
+
 Drupal.behaviors.AJAX = {
-  attach: function (context, settings) {
+    attach: function (context, settings) {
     // Load all Ajax behaviors specified in the settings.
     for (var base in settings.ajax) {
       if (!$('#' + base + '.ajax-processed').length) {
