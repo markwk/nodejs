@@ -88,7 +88,7 @@ function nodejs_init() {
 
   foreach (nodejs_get_js_handlers() as $handler_file) {
     drupal_add_js($handler_file, 'module', 'footer');
-  }
+    }
 }
 
 function _node_js_drupal_register_shutdown_function($callback = NULL) {
