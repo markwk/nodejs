@@ -10,7 +10,9 @@ Setup
 
 Node.js server on Ubuntu:
 
-1. Make sure you have the prerequisites in your ubuntu
+1.1 Replace /misc/drupal.js of the drupal 6 root folder with the drupal.js file provided in the root folder of this module
+
+1.2 Make sure you have the prerequisites in your ubuntu
 
         sudo apt-get install build-essential git curl openssl libssl-dev -y
 
