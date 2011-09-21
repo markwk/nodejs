@@ -22,8 +22,8 @@ function nodejs_actions_action_info() {
 
 /**
  * Try to get the action for the given trigger context.
- * 
- * @param mixed $context 
+ *
+ * @param mixed $context
  * @return mixed
  */
 function nodejs_actions_get_action($context) {
@@ -36,7 +36,7 @@ function nodejs_actions_get_action($context) {
 
 /**
  * Returns a list of triggers that we supply an action for.
- * 
+ *
  * @return array
  */
 function nodejs_actions_get_triggers() {
@@ -99,7 +99,7 @@ function nodejs_actions_user_action($user, $context = array()) {
 
 /**
  * Helper function for enqueueing 'nodejs_notify' channel messages.
- * 
+ *
  * @param mixed $subject
  * @param mixed $body
  */
