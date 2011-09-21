@@ -72,19 +72,23 @@ Drupal.Nodejs.connect = function () {
     Drupal.Nodejs.runSetupHandlers('connect');
     Drupal.Nodejs.socket.on('message', Drupal.Nodejs.runCallbacks);
 
-    // Monkey-patch Drupal.ajax.prototype.beforeSerialize to auto-magically
-    // send sessionId for AJAX requests so we can exclude the current browser
-    // window from resulting notifications. We do this so that modules can hook
-    // in to other modules ajax requests without having to patch them.
-    Drupal.Nodejs.originalBeforeSerialize = Drupal.ajax.prototype.beforeSerialize;
-    Drupal.ajax.prototype.beforeSerialize = function(element_settings, options) {
-      options.data['nodejs_client_socket_id'] = Drupal.Nodejs.socket.socket.sessionid;
-      return Drupal.Nodejs.originalBeforeSerialize(element_settings, options);
-    };
+    if (Drupal.ajax != undefined) {
+      // Monkey-patch Drupal.ajax.prototype.beforeSerialize to auto-magically
+      // send sessionId for AJAX requests so we can exclude the current browser
+      // window from resulting notifications. We do this so that modules can hook
+      // in to other modules ajax requests without having to patch them.
+      Drupal.Nodejs.originalBeforeSerialize = Drupal.ajax.prototype.beforeSerialize;
+      Drupal.ajax.prototype.beforeSerialize = function(element_settings, options) {
+        options.data['nodejs_client_socket_id'] = Drupal.Nodejs.socket.socket.sessionid;
+        return Drupal.Nodejs.originalBeforeSerialize(element_settings, options);
+      };
+    }
   });
   Drupal.Nodejs.socket.on('disconnect', function() {
     Drupal.Nodejs.runSetupHandlers('disconnect');
-    Drupal.ajax.prototype.beforeSerialize = Drupal.Nodejs.originalBeforeSerialize;
+    if (Drupal.ajax != undefined) {
+      Drupal.ajax.prototype.beforeSerialize = Drupal.Nodejs.originalBeforeSerialize;
+    }
   });
   setTimeout("Drupal.Nodejs.checkConnection()", Drupal.settings.nodejs.connectTimeout + 250);
 };
