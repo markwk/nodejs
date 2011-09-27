@@ -1,5 +1,0 @@
-name = Nodejs/AJAX framework integration
-description = Adds support for the Drupal AJAX framework to the Nodejs module
-package = Nodejs
-version = 6.x-1.0-alpha1
-core = 6.x
