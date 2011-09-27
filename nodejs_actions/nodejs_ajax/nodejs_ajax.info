@@ -1,0 +1,10 @@
+name = Nodejs/AJAX framework integration
+description = Adds support for the Drupal AJAX framework to the Nodejs module
+package = Nodejs
+
+; Information added by drupal.org packaging script on 2011-05-17
+version = "6.x-1.0-alpha1"
+core = "6.x"
+project = "nodejs"
+datestamp = "1300754771"
+
