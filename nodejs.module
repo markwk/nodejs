@@ -115,7 +115,6 @@ function nodejs_broadcast_message($subject, $body) {
  */
 function nodejs_send_channel_message($channel, $subject, $body) {
   $message = (object) array(
-    'broadcast' => FALSE,
     'data' => (object) array(
       'subject' => $subject,
       'body' => $body,
@@ -134,7 +133,6 @@ function nodejs_send_channel_message($channel, $subject, $body) {
  */
 function nodejs_send_user_message($uid, $subject, $body) {
   $message = (object) array(
-    'broadcast' => FALSE,
     'data' => (object) array(
       'subject' => $subject,
       'body' => $body,
@@ -344,6 +342,7 @@ function nodejs_add_user_to_channel_form_validate($form, &$form_state) {
  * @param StdClass $message
  */
 function nodejs_enqueue_message(StdClass $message) {
+  $message->broadcast = isset($message->broadcast) ? $message->broadcast : FALSE;
   Nodejs::enqueueMessage($message);
 }
 
@@ -353,6 +352,7 @@ function nodejs_enqueue_message(StdClass $message) {
  * @param StdClass $message
  */
 function nodejs_send_message(StdClass $message) {
+  $message->broadcast = isset($message->broadcast) ? $message->broadcast : FALSE;
   return Nodejs::sendMessage($message);
 }
 

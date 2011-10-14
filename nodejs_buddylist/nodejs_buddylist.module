@@ -75,7 +75,6 @@ function nodejs_buddylist_start_chat() {
 
   $message = (object) array(
     'channel' => 'nodejs_user_' . $buddy->uid,
-    'broadcast' => FALSE,
     'type' => 'startChat',
     'callback' => 'nodejsBuddyListStartChat',
     'data' => (object) array(
@@ -88,7 +87,6 @@ function nodejs_buddylist_start_chat() {
 
   $message = (object) array(
     'channel' => 'nodejs_user_' . $user->uid,
-    'broadcast' => FALSE,
     'type' => 'startChat',
     'callback' => 'nodejsBuddyListStartChat',
     'data' => (object) array(

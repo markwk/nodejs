@@ -40,7 +40,6 @@ function nodejs_watchdog_watchdog(array $entry) {
   $commands[] = ajax_command_before('#admin-dblog tr:eq(1)', nodejs_watchdog_theme_row($row));
   $message = (object) array(
     'channel' => 'watchdog_dblog',
-    'broadcast' => FALSE,
     'commands' => $commands,
     'callback' => 'nodejsNodeAjax',
   );
