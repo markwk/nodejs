@@ -71,8 +71,8 @@ var channelIsClientWritable = function (channel) {
  */
 var sendMessageToBackend = function (message, callback) {
   var requestBody = querystring.stringify({
-        messageJson: JSON.stringify(message), 
-        serviceKey: backendSettings.backend.serviceKey
+        messageJson: JSON.stringify(message),
+        serviceKey: backendSettings.serviceKey
       }),
       options = {
         port: backendSettings.backend.port,
