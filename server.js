@@ -807,14 +807,14 @@ var setupClientConnection = function (sessionId, authData, contentTokens) {
     channels[authData.channels[i]] = channels[authData.channels[i]] || {'sessionIds': {}};
     channels[authData.channels[i]].sessionIds[sessionId] = sessionId;
   }
-  if (authData.uid != 0) { 
+  if (authData.uid != 0) {
     var sendPresenceChange = !onlineUsers[authData.uid];
     onlineUsers[authData.uid] = authData.presenceUids || [];
     if (sendPresenceChange) {
       sendPresenceChangeNotification(authData.uid, 'online');
     }
   }
- 
+
   var clientToken = '';
   for (var tokenChannel in contentTokens) {
     tokenChannels[tokenChannel] = tokenChannels[tokenChannel] || {'tokens': {}, 'sockets': {}};
