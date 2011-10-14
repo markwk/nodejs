@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Generate a token for a piece of content. 
+ * Generate a token for a piece of content.
  */
 function nodejs_generate_content_token() {
   return drupal_hmac_base64(drupal_random_bytes(512), drupal_get_private_key() . drupal_get_hash_salt());
@@ -15,7 +15,7 @@ function nodejs_send_content_channel_message($message) {
 }
 
 /**
- * Send a content channel token to Node.js. 
+ * Send a content channel token to Node.js.
  *
  * @param mixed $channel
  * @param mixed $anonymous_only
