@@ -1,8 +1,8 @@
 /**
- * backendSettings defines configuration settings for server.js, the server code
- * executed by node.
+ * The settings hash defines configuration settings for server.js, the server
+ * code executed by node.
  *
- * The following properties should be defined for the backendSettings variable:
+ * The following properties should be defined for the settings variable:
  *
  * scheme: 'http' or 'https'. This defines whether the node server should
  * contact the Drupal site using http or https. If https is used, the key and
@@ -39,8 +39,6 @@
  *  -- messagePath: http path on which the Drupal node.js module listens for
  *  messages from the Node.js server process.
  *
- *  -- basePath: the base path of your backend site, defaults to '/'
- *
  * extensions: An array of names of node.js modules that should be loaded as
  * extensions to the node.js server.
  *
@@ -58,7 +56,7 @@
  *
  * logLevel: the log level to be used by Socket.Io.
  */
-backendSettings = {
+settings = {
   'scheme': 'http',
   'host': 'your.nodejs.server.hostname',
   'port': 8080,
