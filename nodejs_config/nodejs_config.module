@@ -88,11 +88,11 @@ function nodejs_config_form($form, &$form_state) {
     '#description' => 'http path on which the node.js server should accept messages from the Drupal site.',
     '#default_value' => variable_get('nodejs_config_publishUrl', base_path() . 'nodejs/publish'),
   );
-  $form['config']['nodejs_config_serviceKey'] = array(
+  $form['config']['nodejs_service_key'] = array(
     '#type' => 'textfield',
     '#title' => 'Service Key',
     '#description' => 'An arbitrary string used as a secret between the node.js server and the Drupal site.',
-    '#default_value' => variable_get('nodejs_config_serviceKey', ''),
+    '#default_value' => variable_get('nodejs_service_key', ''),
   );
   $form['config']['nodejs_config_write_channels'] = array(
     '#type' => 'checkbox',
@@ -176,7 +176,7 @@ function nodejs_config_form_submit($form, &$form_state) {
     'cert' => check_plain($values['nodejs_config_cert']),
     'resource' => check_plain($values['nodejs_config_resource']),
     'publishUrl' => check_plain($values['nodejs_config_publishUrl']),
-    'serviceKey' => check_plain($values['nodejs_config_serviceKey']),
+    'serviceKey' => check_plain($values['nodejs_service_key']),
     'backend' => array(
       'port' => (int) $values['nodejs_config_backend_port'],
       'host' => check_plain($values['nodejs_config_backend_host']),
