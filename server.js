@@ -22,8 +22,8 @@ var channels = {},
     extensions = [];
 
 try {
-  var backendSettings = vm.runInThisContext(fs.readFileSync(process.cwd() + '/nodejs.config.js'));
-  backendSettings.extensions = backendSettings.extensions || [];
+  var settings = vm.runInThisContext(fs.readFileSync(process.cwd() + '/nodejs.config.js'));
+  settings.extensions = settings.extensions || [];
 }
 catch (exception) {
   console.log("Failed to read config file, exiting: " + exception);
@@ -31,30 +31,30 @@ catch (exception) {
 }
 
 // Load server extensions
-for (var i in backendSettings.extensions) {
+for (var i in settings.extensions) {
   try {
     // Load JS files for extensions as modules, and collect the returned
     // object for each extension.
-    extensions.push(require(__dirname + '/' + backendSettings.extensions[i]));
-    console.log("Extension loaded: " + backendSettings.extensions[i]);
+    extensions.push(require(__dirname + '/' + settings.extensions[i]));
+    console.log("Extension loaded: " + settings.extensions[i]);
   }
   catch (exception) {
-    console.log("Failed to load extension " + backendSettings.extensions[i] + " [" + exception + "]");
+    console.log("Failed to load extension " + settings.extensions[i] + " [" + exception + "]");
     process.exit(1);
   }
 }
 
 // Initialize other default settings
-backendSettings.kickUserUrl = '/nodejs/user/kick/:uid';
-backendSettings.logoutUserUrl = '/nodejs/user/logout/:authtoken';
-backendSettings.addUserToChannelUrl = '/nodejs/user/channel/add/:channel/:uid';
-backendSettings.removeUserFromChannelUrl = '/nodejs/user/channel/remove/:channel/:uid';
-backendSettings.setUserPresenceListUrl = '/nodejs/user/presence-list/:uid/:uidList';
-backendSettings.addAuthTokenToChannelUrl = '/nodejs/authtoken/channel/add/:channel/:uid';
-backendSettings.removeAuthTokenFromChannelUrl = '/nodejs/authtoken/channel/remove/:channel/:uid';
-backendSettings.toggleDebugUrl = '/nodejs/debug/toggle';
-backendSettings.contentTokenUrl = '/nodejs/content/token';
-backendSettings.publishMessageToContentChannelUrl = '/nodejs/content/token/message';
+settings.kickUserUrl = '/nodejs/user/kick/:uid';
+settings.logoutUserUrl = '/nodejs/user/logout/:authtoken';
+settings.addUserToChannelUrl = '/nodejs/user/channel/add/:channel/:uid';
+settings.removeUserFromChannelUrl = '/nodejs/user/channel/remove/:channel/:uid';
+settings.setUserPresenceListUrl = '/nodejs/user/presence-list/:uid/:uidList';
+settings.addAuthTokenToChannelUrl = '/nodejs/authtoken/channel/add/:channel/:uid';
+settings.removeAuthTokenFromChannelUrl = '/nodejs/authtoken/channel/remove/:channel/:uid';
+settings.toggleDebugUrl = '/nodejs/debug/toggle';
+settings.contentTokenUrl = '/nodejs/content/token';
+settings.publishMessageToContentChannelUrl = '/nodejs/content/token/message';
 
 /**
  * Check if the given channel is client-writable.
@@ -72,24 +72,24 @@ var channelIsClientWritable = function (channel) {
 var sendMessageToBackend = function (message, callback) {
   var requestBody = querystring.stringify({
         messageJson: JSON.stringify(message),
-        serviceKey: backendSettings.serviceKey
+        serviceKey: settings.serviceKey
       }),
       options = {
-        port: backendSettings.backend.port,
-        host: backendSettings.backend.host,
+        port: settings.backend.port,
+        host: settings.backend.host,
         headers: {
           'Content-Length': Buffer.byteLength(requestBody),
           'Content-Type': 'application/x-www-form-urlencoded'
         },
         agent: false,
         method: 'POST',
-        agent: http.getAgent(backendSettings.backend.host, backendSettings.backend.port),
-        path: backendSettings.backend.messagePath
+        agent: http.getAgent(settings.backend.host, settings.backend.port),
+        path: settings.backend.basePath + settings.backend.messagePath
       },
-      scheme = backendSettings.backend.scheme,
+      scheme = settings.backend.scheme,
       request;
 
-  if (backendSettings.debug) {
+  if (settings.debug) {
     console.log("Sending message to backend", message, options);
   }
   request = scheme == 'http' ? http.request(options, callback) : https.request(options, callback);
@@ -105,7 +105,7 @@ var sendMessageToBackend = function (message, callback) {
 var authenticateClient = function (client, message) {
   // If the authToken is verified, initiate a connection with the client.
   if (authenticatedClients[message.authToken]) {
-    if (backendSettings.debug) {
+    if (settings.debug) {
       console.log('Reusing existing authentication data for key:', message.authToken, ', client id:', client.id);
     }
     setupClientConnection(client.id, authenticatedClients[message.authToken], message.contentTokens);
@@ -128,7 +128,7 @@ var authenticateClientCallback = function (response) {
   });
   response.on('end', function () {
     if (response.statusCode == 404) {
-      if (backendSettings.debug) {
+      if (settings.debug) {
         console.log('Backend authentication url not found, full response info:', response);
       }
       else {
@@ -142,7 +142,7 @@ var authenticateClientCallback = function (response) {
     }
     catch (exception) {
       console.log('Failed to parse authentication message:', exception);
-      if (backendSettings.debug) {
+      if (settings.debug) {
         console.log('Failed message string: ' + requestBody);
       }
       return;
@@ -152,7 +152,7 @@ var authenticateClientCallback = function (response) {
       return;
     }
     if (authData.nodejsValidAuthToken) {
-      if (backendSettings.debug) {
+      if (settings.debug) {
         console.log('Valid login for uid "', authData.uid, '"');
       }
       setupClientConnection(authData.clientId, authData, authData.contentTokens);
@@ -172,7 +172,7 @@ var sendPresenceChangeNotification = function (uid, presenceEvent) {
   if (onlineUsers[uid]) {
     for (var i in onlineUsers[uid]) {
       var sessionIds = getNodejsSessionIdsFromUid(onlineUsers[uid][i]);
-      if (sessionIds.length > 0 && backendSettings.debug) {
+      if (sessionIds.length > 0 && settings.debug) {
         console.log('Sending presence notification for', uid, 'to', onlineUsers[uid][i]);
       }
       for (var j in sessionIds) {
@@ -180,7 +180,7 @@ var sendPresenceChangeNotification = function (uid, presenceEvent) {
       }
     }
   }
-  if (backendSettings.debug) {
+  if (settings.debug) {
     console.log('sendPresenceChangeNotification', uid, presenceEvent, onlineUsers);
   }
 }
@@ -201,8 +201,8 @@ var checkServiceKeyCallback = function (request, response, next) {
  * Check a service key against the configured service key.
  */
 var checkServiceKey = function (serviceKey) {
-  if (backendSettings.serviceKey && serviceKey != backendSettings.serviceKey) {
-    console.log('Invalid service key "' + serviceKey + '", expecting "' + backendSettings.serviceKey + '"');
+  if (settings.serviceKey && serviceKey != settings.serviceKey) {
+    console.log('Invalid service key "' + serviceKey + '", expecting "' + settings.serviceKey + '"');
     return false;
   }
   return true;
@@ -220,7 +220,7 @@ var toggleDebug = function (request, response) {
   request.on('end', function () {
     try {
       var toggle = JSON.parse(requestBody);
-      backendSettings.debug = toggle.debug;
+      settings.debug = toggle.debug;
       response.send({debug: toggle.debug});
     }
     catch (exception) {
@@ -242,7 +242,7 @@ var publishMessage = function (request, response) {
   request.on('end', function () {
     try {
       var message = JSON.parse(requestBody);
-      if (backendSettings.debug) {
+      if (settings.debug) {
         console.log('publishMessage: message', message);
       }
     }
@@ -252,7 +252,7 @@ var publishMessage = function (request, response) {
       return;
     }
     if (message.broadcast) {
-      if (backendSettings.debug) {
+      if (settings.debug) {
         console.log('Broadcasting message');
       }
       io.sockets.json.send(message);
@@ -285,7 +285,7 @@ var publishMessageToChannel = function (message) {
       clientCount++;
     }
   }
-  if (backendSettings.debug) {
+  if (settings.debug) {
     console.log('Sent message to ' + clientCount + ' clients in channel "' + message.channel + '"');
   }
   return clientCount;
@@ -303,7 +303,7 @@ var publishMessageToContentChannel = function (request, response) {
   request.on('end', function () {
     try {
       var message = JSON.parse(requestBody);
-      if (backendSettings.debug) {
+      if (settings.debug) {
         console.log('publishMessageToContentChannel: message', message);
       }
     }
@@ -336,7 +336,7 @@ var publishMessageToContentChannel = function (request, response) {
 var publishMessageToClient = function (sessionId, message) {
   if (io.sockets.sockets[sessionId]) {
     io.sockets.socket(sessionId).json.send(message);
-    if (backendSettings.debug) {
+    if (settings.debug) {
       console.log('Sent message to client ' + sessionId);
     }
     return true;
@@ -368,7 +368,7 @@ var kickUser = function (request, response) {
     for (var clientId in io.sockets.sockets) {
       if (io.sockets.sockets[clientId].uid == request.params.uid) {
         delete io.sockets.sockets[clientId];
-        if (backendSettings.debug) {
+        if (settings.debug) {
           console.log('kickUser: deleted socket "' + clientId + '" for uid "' + request.params.uid + '"');
         }
         // Delete any channel entries for this clientId.
@@ -421,7 +421,7 @@ var getNodejsSessionIdsFromUid = function (uid) {
       sessionIds.push(sessionId);
     }
   }
-  if (backendSettings.debug) {
+  if (settings.debug) {
     console.log('getNodejsSessionIdsFromUid', {uid: uid, sessionIds: sessionIds});
   }
   return sessionIds;
@@ -437,7 +437,7 @@ var getNodejsSessionIdsFromAuthToken = function (authToken) {
       sessionIds.push(sessionId);
     }
   }
-  if (backendSettings.debug) {
+  if (settings.debug) {
     console.log('getNodejsSessionIdsFromAuthToken', {authToken: authToken, sessionIds: sessionIds});
   }
   return sessionIds;
@@ -466,7 +466,7 @@ var addUserToChannel = function (request, response) {
       for (var i in sessionIds) {
         channels[channel].sessionIds[sessionIds[i]] = sessionIds[i];
       }
-      if (backendSettings.debug) {
+      if (settings.debug) {
         console.log("Added channel '" + channel + "' to sessionIds " + sessionIds.join());
       }
       response.send({'status': 'success'});
@@ -479,7 +479,7 @@ var addUserToChannel = function (request, response) {
       if (authenticatedClients[authToken].uid == uid) {
         if (authenticatedClients[authToken].channels.indexOf(channel) == -1) {
           authenticatedClients[authToken].channels.push(channel);
-          if (backendSettings.debug) {
+          if (settings.debug) {
             console.log("Added channel '" + channel + "' authenticatedClients");
           }
         }
@@ -520,7 +520,7 @@ var addAuthTokenToChannel = function (request, response) {
     for (var i in sessionIds) {
       channels[channel].sessionIds[sessionIds[i]] = sessionIds[i];
     }
-    if (backendSettings.debug) {
+    if (settings.debug) {
       console.log("Added sessionIds '" + sessionIds.join() + "' to channel '" + channel + "'");
     }
     response.send({'status': 'success'});
@@ -531,7 +531,7 @@ var addAuthTokenToChannel = function (request, response) {
   }
   if (authenticatedClients[authToken].channels.indexOf(channel) == -1) {
     authenticatedClients[authToken].channels.push(channel);
-    if (backendSettings.debug) {
+    if (settings.debug) {
       console.log("Added channel '" + channel + "' to authenticatedClients");
     }
   }
@@ -551,7 +551,7 @@ var addClientToChannel = function (sessionId, channel) {
     else {
       channels[channel] = channels[channel] || {'sessionIds': {}};
       channels[channel].sessionIds[sessionId] = sessionId;
-      if (backendSettings.debug) {
+      if (settings.debug) {
         console.log("Added channel '" + channel + "' to sessionId " + sessionId);
       }
       return true;
@@ -595,7 +595,7 @@ var removeUserFromChannel = function (request, response) {
           }
         }
       }
-      if (backendSettings.debug) {
+      if (settings.debug) {
         console.log("Successfully removed uid '" + uid + "' from channel '" + channel + "'");
       }
       response.send({'status': 'success'});
@@ -642,7 +642,7 @@ var removeAuthTokenFromChannel = function (request, response) {
           delete authenticatedClients[authToken].channels[index];
         }
       }
-      if (backendSettings.debug) {
+      if (settings.debug) {
         console.log("Successfully removed authToken '" + authToken + "' from channel '" + channel + "'.");
       }
       response.send({'status': 'success'});
@@ -672,7 +672,7 @@ var removeClientFromChannel = function (sessionId, channel) {
     }
     else if (channels[channel].sessionIds[sessionId]) {
       delete channels[channels].sessionIds[sessionId];
-      if (backendSettings.debug) {
+      if (settings.debug) {
         console.log("Removed sessionId '" + sessionId + "' from channel '" + channel + "'");
       }
       return true;
@@ -720,7 +720,7 @@ var setUserPresenceList = function (uid, uids) {
  * Cleanup after a socket has disconnected.
  */
 var cleanupSocket = function (socket) {
-  if (backendSettings.debug) {
+  if (settings.debug) {
     console.log("Cleaning up after socket id", socket.id, 'uid', socket.uid);
   }
   for (var channel in channels) {
@@ -746,7 +746,7 @@ var cleanupSocket = function (socket) {
  */
 var checkOnlineStatus = function (uid) {
   if (getNodejsSessionIdsFromUid(uid).length == 0) {
-    if (backendSettings.debug) {
+    if (settings.debug) {
       console.log("Sending offline notification for", uid);
     }
     setUserOffline(uid);
@@ -774,7 +774,7 @@ var setContentToken = function (request, response) {
   request.on('end', function () {
     try {
       var message = JSON.parse(requestBody);
-      if (backendSettings.debug) {
+      if (settings.debug) {
         console.log('setContentToken: message', message);
       }
     }
@@ -785,7 +785,7 @@ var setContentToken = function (request, response) {
     }
     tokenChannels[message.channel] = tokenChannels[message.channel] || {'tokens': {}, 'sockets': {}};
     tokenChannels[message.channel].tokens[message.token] = true;
-    if (backendSettings.debug) {
+    if (settings.debug) {
       console.log('setContentToken', message.token, 'for channel', message.channel);
     }
     response.send({status: 'ok'});
@@ -822,7 +822,7 @@ var setupClientConnection = function (sessionId, authData, contentTokens) {
     clientToken = contentTokens[tokenChannel];
     if (tokenChannels[tokenChannel].tokens[clientToken]) {
       tokenChannels[tokenChannel].sockets[sessionId] = true;
-      if (backendSettings.debug) {
+      if (settings.debug) {
         console.log('Added token', clientToken, 'for channel', tokenChannel, 'for socket', sessionId);
       }
       delete tokenChannels[tokenChannel].tokens[clientToken];
@@ -831,44 +831,44 @@ var setupClientConnection = function (sessionId, authData, contentTokens) {
 
   process.emit('client-authenticated', sessionId, authData);
 
-  if (backendSettings.debug) {
+  if (settings.debug) {
     console.log("Added channels for uid " + authData.uid + ': ' + authData.channels.toString());
     console.log('setupClientConnection', onlineUsers);
   }
 };
 
 var server;
-if (backendSettings.scheme == 'https') {
+if (settings.scheme == 'https') {
   server = express.createServer({
-    key: fs.readFileSync(backendSettings.key),
-    cert: fs.readFileSync(backendSettings.cert)
+    key: fs.readFileSync(settings.key),
+    cert: fs.readFileSync(settings.cert)
   });
 }
 else {
   server = express.createServer();
 }
 server.all('/nodejs/*', checkServiceKeyCallback);
-server.post(backendSettings.publishUrl, publishMessage);
-server.get(backendSettings.kickUserUrl, kickUser);
-server.get(backendSettings.logoutUserUrl, logoutUser);
-server.get(backendSettings.addUserToChannelUrl, addUserToChannel);
-server.get(backendSettings.removeUserFromChannelUrl, removeUserFromChannel);
-server.get(backendSettings.setUserPresenceListUrl, setUserPresenceList);
-server.get(backendSettings.toggleDebugUrl, toggleDebug);
-server.post(backendSettings.contentTokenUrl, setContentToken);
-server.post(backendSettings.publishMessageToContentChannelUrl, publishMessageToContentChannel);
+server.post(settings.publishUrl, publishMessage);
+server.get(settings.kickUserUrl, kickUser);
+server.get(settings.logoutUserUrl, logoutUser);
+server.get(settings.addUserToChannelUrl, addUserToChannel);
+server.get(settings.removeUserFromChannelUrl, removeUserFromChannel);
+server.get(settings.setUserPresenceListUrl, setUserPresenceList);
+server.get(settings.toggleDebugUrl, toggleDebug);
+server.post(settings.contentTokenUrl, setContentToken);
+server.post(settings.publishMessageToContentChannelUrl, publishMessageToContentChannel);
 server.get('*', send404);
-server.listen(backendSettings.port, backendSettings.host);
-console.log('Started ' + backendSettings.scheme + ' server.');
+server.listen(settings.port, settings.host);
+console.log('Started ' + settings.scheme + ' server.');
 
-var io = socket_io.listen(server, {port: backendSettings.port, resource: backendSettings.resource});
+var io = socket_io.listen(server, {port: settings.port, resource: settings.resource});
 io.configure(function () {
-  io.set('transports', backendSettings.transports);
-  io.set('log level', backendSettings.logLevel);
-  if (backendSettings.jsEtag) {
+  io.set('transports', settings.transports);
+  io.set('log level', settings.logLevel);
+  if (settings.jsEtag) {
     io.enable('browser client etag');
   }
-  if (backendSettings.jsMinification) {
+  if (settings.jsMinification) {
     io.enable('browser client minification');
   }
 });
@@ -877,7 +877,7 @@ io.sockets.on('connection', function(socket) {
   process.emit('client-connection', socket.id);
 
   socket.on('authenticate', function(message) {
-    if (backendSettings.debug) {
+    if (settings.debug) {
       console.log('Authenticating client with key "' + message.authToken + '"');
     }
     authenticateClient(socket, message);
@@ -886,27 +886,27 @@ io.sockets.on('connection', function(socket) {
   socket.on('message', function(message) {
     // If the message is from an active client, then process it.
     if (io.sockets.sockets[socket.id] && message.hasOwnProperty('type')) {
-      if (backendSettings.debug) {
+      if (settings.debug) {
         console.log('Received message from client ' + socket.id);
       }
 
       // If this message is destined for a channel, check that writing to 
       // channels from client sockets is allowed.
       if (message.hasOwnProperty('channel')) {
-        if (backendSettings.clientsCanWriteToChannels || channelIsClientWritable(message.channel)) {
+        if (settings.clientsCanWriteToChannels || channelIsClientWritable(message.channel)) {
           process.emit('client-message', socket.id, message);
         }
-        else if (backendSettings.debug) {
+        else if (settings.debug) {
           console.log('Received unauthorised message from client: cannot write to channel ' + socket.id);
         }
       }
 
       // No channel, so this message is destined for one or more clients. Check
       // that this is allowed in the server configuration.
-      if (backendSettings.clientsCanWriteToClients) {
+      if (settings.clientsCanWriteToClients) {
         process.emit('client-message', socket.id, message);
       }
-      else if (backendSettings.debug) {
+      else if (settings.debug) {
         console.log('Received unauthorised message from client: cannot write to client ' + socket.id);
       }
       return;
@@ -943,7 +943,7 @@ var extensionsConfig = {
   'publishMessageToChannel': publishMessageToChannel,
   'publishMessageToClient': publishMessageToClient,
   'addClientToChannel': addClientToChannel,
-  'backendSettings': backendSettings,
+  'settings': settings,
   'channels': channels,
   'io': io,
   'tokenChannels': tokenChannels,
