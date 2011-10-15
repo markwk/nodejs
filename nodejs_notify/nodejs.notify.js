@@ -1,7 +1,7 @@
 
 (function ($) {
 
-Drupal.Nodejs.callbacks.nodejsNotify = {  
+Drupal.Nodejs.callbacks.nodejsNotify = {
   callback: function (message) {
     var notifyTime = Drupal.settings.nodejs_notify.notification_time;
     if (notifyTime > 0) {

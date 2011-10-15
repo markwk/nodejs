@@ -1,5 +1,5 @@
 /**
- * Provides Node.js - Drupal integration. 
+ * Provides Node.js - Drupal integration.
  *
  * This code is beta quality.
  */
