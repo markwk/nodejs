@@ -15,6 +15,9 @@
  *
  * port: Specify the TCP port that the node server should listen on.
  *
+ * baseAuthPath: base path for all requests from the backend. This is used to
+ * set the authentication call for all requests from the backend.
+ *
  * key: File system path to a key used for https communication with the server
  * and clients.
  *
@@ -30,6 +33,9 @@
  * serviceKey: An arbitrary string used as a secret between the node.js server
  * and the Drupal site.
  *
+ * debug: Whether to write a bunch of debug information to the console. false
+ * by default.
+ *
  * backend: An object with the following properties:
  *
  *  -- port: TCP port of the server running the Drupal site. Usually 80.
@@ -39,7 +45,7 @@
  *  -- messagePath: http path on which the Drupal node.js module listens for
  *  messages from the Node.js server process.
  *
- *  -- basePath: the base path of your backend site, defaults to ''
+ *  -- basePath: the base path of your backend site, defaults to ''.
  *
  * extensions: An array of names of node.js modules that should be loaded as
  * extensions to the node.js server.
@@ -60,17 +66,20 @@
  */
 settings = {
   'scheme': 'http',
-  'host': 'your.nodejs.server.hostname',
+  'host': 'localhost',
   'port': 8080,
   'key': '/path/to/key/file',
   'cert': '/path/to/cert/file',
   'resource': '/socket.io',
-  'publishUrl': '/nodejs/publish',
+  'baseAuthPath': '/nodejs/',
+  'publishUrl': 'publish',
   'serviceKey': '',
+  'debug': false,
   'backend': {
     'port': 80,
-    'host': 'your.drupal.sites.hostname',
-    'messagePath': '/nodejs/message'
+    'host': 'your.drupal.site.hostname',
+    'messagePath': '/nodejs/message',
+    'basePath': ''
   },
   'extensions': [],
   'clientsCanWriteToChannels': false,

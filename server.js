@@ -20,9 +20,14 @@ var channels = {},
     presenceTimeoutIds = {},
     tokenChannels = {},
     settingsDefaults = {
+      scheme: 'http',
       port: 8080,
       host: 'localhost',
-      baseUrl: '/nodejs/',
+      resource: '/socket.io',
+      serviceKey: '',
+      debug: false,
+      baseAuthPath: '/nodejs/',
+      publishUrl: 'publish',
       kickUserUrl: 'user/kick/:uid',
       logoutUserUrl: 'user/logout/:authtoken',
       addUserToChannelUrl: 'user/channel/add/:channel/:uid',
@@ -33,7 +38,13 @@ var channels = {},
       toggleDebugUrl: 'debug/toggle',
       contentTokenUrl: 'content/token',
       publishMessageToContentChannelUrl: 'content/token/message',
-      extensions: []
+      extensions: [],
+      clientsCanWriteToChannels: false,
+      clientsCanWriteToClients: false,
+      transports: ['websocket', 'flashsocket', 'htmlfile', 'xhr-polling', 'jsonp-polling'],
+      jsMinification: true,
+      jsEtag: true,
+      logLevel: 1
     },
     extensions = [];
 
@@ -855,16 +866,16 @@ if (settings.scheme == 'https') {
 else {
   server = express.createServer();
 }
-server.all(settings.baseUrl + '*', checkServiceKeyCallback);
-server.post(settings.baseUrl + settings.publishUrl, publishMessage);
-server.get(settings.baseUrl + settings.kickUserUrl, kickUser);
-server.get(settings.baseUrl + settings.logoutUserUrl, logoutUser);
-server.get(settings.baseUrl + settings.addUserToChannelUrl, addUserToChannel);
-server.get(settings.baseUrl + settings.removeUserFromChannelUrl, removeUserFromChannel);
-server.get(settings.baseUrl + settings.setUserPresenceListUrl, setUserPresenceList);
-server.get(settings.baseUrl + settings.toggleDebugUrl, toggleDebug);
-server.post(settings.baseUrl + settings.contentTokenUrl, setContentToken);
-server.post(settings.baseUrl + settings.publishMessageToContentChannelUrl, publishMessageToContentChannel);
+server.all(settings.baseAuthPath + '*', checkServiceKeyCallback);
+server.post(settings.baseAuthPath + settings.publishUrl, publishMessage);
+server.get(settings.baseAuthPath + settings.kickUserUrl, kickUser);
+server.get(settings.baseAuthPath + settings.logoutUserUrl, logoutUser);
+server.get(settings.baseAuthPath + settings.addUserToChannelUrl, addUserToChannel);
+server.get(settings.baseAuthPath + settings.removeUserFromChannelUrl, removeUserFromChannel);
+server.get(settings.baseAuthPath + settings.setUserPresenceListUrl, setUserPresenceList);
+server.get(settings.baseAuthPath + settings.toggleDebugUrl, toggleDebug);
+server.post(settings.baseAuthPath + settings.contentTokenUrl, setContentToken);
+server.post(settings.baseAuthPath + settings.publishMessageToContentChannelUrl, publishMessageToContentChannel);
 server.get('*', send404);
 server.listen(settings.port, settings.host);
 console.log('Started ' + settings.scheme + ' server.');
