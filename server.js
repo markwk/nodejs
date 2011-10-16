@@ -24,6 +24,7 @@ var channels = {},
 try {
   var settings = vm.runInThisContext(fs.readFileSync(process.cwd() + '/nodejs.config.js'));
   settings.extensions = settings.extensions || [];
+  settings.backend.basePath = settings.backend.basePath || '';
 }
 catch (exception) {
   console.log("Failed to read config file, exiting: " + exception);
