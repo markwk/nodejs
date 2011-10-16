@@ -19,12 +19,31 @@ var channels = {},
     onlineUsers = {},
     presenceTimeoutIds = {},
     tokenChannels = {},
+    settingsDefaults = {
+      port: 8080,
+      host: 'localhost',
+      baseUrl: '/nodejs/',
+      kickUserUrl: 'user/kick/:uid',
+      logoutUserUrl: 'user/logout/:authtoken',
+      addUserToChannelUrl: 'user/channel/add/:channel/:uid',
+      removeUserFromChannelUrl: 'user/channel/remove/:channel/:uid',
+      setUserPresenceListUrl: 'user/presence-list/:uid/:uidList',
+      addAuthTokenToChannelUrl: 'authtoken/channel/add/:channel/:uid',
+      removeAuthTokenFromChannelUrl: 'authtoken/channel/remove/:channel/:uid',
+      toggleDebugUrl: 'debug/toggle',
+      contentTokenUrl: 'content/token',
+      publishMessageToContentChannelUrl: 'content/token/message',
+      extensions: []
+    },
     extensions = [];
 
 try {
   var settings = vm.runInThisContext(fs.readFileSync(process.cwd() + '/nodejs.config.js'));
-  settings.extensions = settings.extensions || [];
-  settings.backend.basePath = settings.backend.basePath || '';
+  for (var key in settingsDefaults) {
+    if (!settings.hasOwnProperty(key)) {
+      settings[key] = settingsDefaults[key];
+    }
+  }
 }
 catch (exception) {
   console.log("Failed to read config file, exiting: " + exception);
@@ -44,18 +63,6 @@ for (var i in settings.extensions) {
     process.exit(1);
   }
 }
-
-// Initialize other default settings
-settings.kickUserUrl = '/nodejs/user/kick/:uid';
-settings.logoutUserUrl = '/nodejs/user/logout/:authtoken';
-settings.addUserToChannelUrl = '/nodejs/user/channel/add/:channel/:uid';
-settings.removeUserFromChannelUrl = '/nodejs/user/channel/remove/:channel/:uid';
-settings.setUserPresenceListUrl = '/nodejs/user/presence-list/:uid/:uidList';
-settings.addAuthTokenToChannelUrl = '/nodejs/authtoken/channel/add/:channel/:uid';
-settings.removeAuthTokenFromChannelUrl = '/nodejs/authtoken/channel/remove/:channel/:uid';
-settings.toggleDebugUrl = '/nodejs/debug/toggle';
-settings.contentTokenUrl = '/nodejs/content/token';
-settings.publishMessageToContentChannelUrl = '/nodejs/content/token/message';
 
 /**
  * Check if the given channel is client-writable.
@@ -848,16 +855,16 @@ if (settings.scheme == 'https') {
 else {
   server = express.createServer();
 }
-server.all('/nodejs/*', checkServiceKeyCallback);
-server.post(settings.publishUrl, publishMessage);
-server.get(settings.kickUserUrl, kickUser);
-server.get(settings.logoutUserUrl, logoutUser);
-server.get(settings.addUserToChannelUrl, addUserToChannel);
-server.get(settings.removeUserFromChannelUrl, removeUserFromChannel);
-server.get(settings.setUserPresenceListUrl, setUserPresenceList);
-server.get(settings.toggleDebugUrl, toggleDebug);
-server.post(settings.contentTokenUrl, setContentToken);
-server.post(settings.publishMessageToContentChannelUrl, publishMessageToContentChannel);
+server.all(settings.baseUrl + '*', checkServiceKeyCallback);
+server.post(settings.baseUrl + settings.publishUrl, publishMessage);
+server.get(settings.baseUrl + settings.kickUserUrl, kickUser);
+server.get(settings.baseUrl + settings.logoutUserUrl, logoutUser);
+server.get(settings.baseUrl + settings.addUserToChannelUrl, addUserToChannel);
+server.get(settings.baseUrl + settings.removeUserFromChannelUrl, removeUserFromChannel);
+server.get(settings.baseUrl + settings.setUserPresenceListUrl, setUserPresenceList);
+server.get(settings.baseUrl + settings.toggleDebugUrl, toggleDebug);
+server.post(settings.baseUrl + settings.contentTokenUrl, setContentToken);
+server.post(settings.baseUrl + settings.publishMessageToContentChannelUrl, publishMessageToContentChannel);
 server.get('*', send404);
 server.listen(settings.port, settings.host);
 console.log('Started ' + settings.scheme + ' server.');
