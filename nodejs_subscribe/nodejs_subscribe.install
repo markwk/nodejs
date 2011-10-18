@@ -43,10 +43,17 @@ function nodejs_subscribe_schema() {
 }
 
 /**
+ * Implements hook_install().
+ */
+function nodejs_subscribe_install() {
+  drupal_install_schema('nodejs_subscribe');
+}
+
+/**
  * Create the {nodejs_subscribe_node} table.
  */
 function nodejs_subscribe_update_7000() {
-  $schema = nodejs_subscribe_schema();
-  $ret = "";
-  db_create_table(&$ret, 'nodejs_subscribe_node', $schema['nodejs_subscribe_node']);
+  //$schema = nodejs_subscribe_schema();
+  //drupal_install_schema('nodejs_subscribe');
+//  db_create_table('nodejs_subscribe_node', $schema['nodejs_subscribe_node']);
 }

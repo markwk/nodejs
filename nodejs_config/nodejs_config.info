@@ -1,6 +1,6 @@
 name = Nodejs Config
 description = Helps to configure the nodejs module.
 package = Nodejs
-version = 6.x-1.0-alpha1
+version = VERSION
 core = 6.x
 dependencies[] = nodejs

@@ -22,7 +22,7 @@ function nodejs_config_menu() {
  * @param mixed $form_state 
  * @return array
  */
-function nodejs_config_form($form, &$form_state) {
+function nodejs_config_form() {
   $form['config'] = array(
     '#type' => 'fieldset',
     '#title' => 'Settings',
@@ -66,7 +66,7 @@ function nodejs_config_form($form, &$form_state) {
     '#required' => TRUE,
     '#description' => 'http path that the node.js server should respond to. 
                        This value needs to match the Drupal node.js configuration.',
-    '#default_value' => variable_get('nodejs_config_resource', '/node.js/realtime'),
+    '#default_value' => variable_get('nodejs_config_resource', '/socket.io'),
   );
   $form['config']['nodejs_config_publishUrl'] = array(
     '#type' => 'textfield',
@@ -174,7 +174,7 @@ function nodejs_config_form_submit($form, &$form_state) {
     'extensions' => array($ext),
     'debug' => (bool) $values['nodejs_config_debug'],
   );
-  $output = 'backendSettings = ' . drupal_json_encode($array);
+  $output = 'backendSettings = ' . json_encode($array);
   $output = str_replace(array('= {', ',', '}}', ':{', '\/'), array("= {\n  ", ",\n  ", "\n  }\n}", ":{\n  ",  '/'), $output);
 
   $file_path = drupal_get_path('module', 'nodejs') . '/nodejs.config.js';
@@ -183,7 +183,7 @@ function nodejs_config_form_submit($form, &$form_state) {
     drupal_set_message('<pre>' . $output . '</pre>');
   } 
   else {
-    file_put_contents($file_path, $js);
+    file_put_contents($file_path, $output);
   }
 }
 

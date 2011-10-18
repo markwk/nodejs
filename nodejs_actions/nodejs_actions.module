@@ -1,109 +1,96 @@
 <?php
-
 /**
  * Implementation of hook_action_info().
  */
  
 function nodejs_actions_action_info() {
- /*  return array(
-     'node' => array(
-       'node_presave' => array(
-         'label' => t('When either saving new content or updating existing content'),
-       ),
-       'node_insert' => array(
-         'label' => t('After saving new content'),
-       ),
-       'node_update' => array(
-         'label' => t('After saving updated content'),
-       ),
-       'node_delete' => array(
-         'label' => t('After deleting content'),
-       ),
-       'node_view' => array(
-         'label' => t('When content is viewed by an authenticated user'),
-       ),
-     ),
-     'comment' => array(
-       'comment_presave' => array(
-         'label' => t('When either saving a new comment or updating an existing comment'),
-       ),
-       'comment_insert' => array(
-         'label' => t('After saving a new comment'),
-       ),
-       'comment_update' => array(
-         'label' => t('After saving an updated comment'),
-       ),
-       'comment_delete' => array(
-         'label' => t('After deleting a comment'),
-       ),
-       'comment_view' => array(
-         'label' => t('When a comment is being viewed by an authenticated user'),
-       ),
-     ),
-     'taxonomy' => array(
-       'taxonomy_term_insert' => array(
-         'label' => t('After saving a new term to the database'),
-       ),
-       'taxonomy_term_update' => array(
-         'label' => t('After saving an updated term to the database'),
-       ),
-       'taxonomy_term_delete' => array(
-         'label' => t('After deleting a term'),
-       ),
-     ),
-     'system' => array(
-       'cron' => array(
-         'label' => t('When cron runs'),
-       ),
-     ),
-     'user' => array(
-       'user_insert' => array(
-         'label' => t('After creating a new user account'),
-       ),
-       'user_update' => array(
-         'label' => t('After updating a user account'),
-       ),
-       'user_delete' => array(
-         'label' => t('After a user has been deleted'),
-       ),
-       'user_login' => array(
-         'label' => t('After a user has logged in'),
-       ),
-       'user_logout' => array(
-         'label' => t('After a user has logged out'),
-       ),
-       'user_view' => array(
-         'label' => t("When a user's profile is being viewed"),
-       ),
-     ),
-   );
 
-*/
   return array(
-    'realtime_comment_publish_action' => array(
-      'description' => t('Publish realtime notifications Publish comment'),
-      'type' => 'comment',
-      'configurable' => TRUE,
+    'realtime_cron_action' => array(
+      'description' => t('Publish realtime notifications when cron is run.'),
+      'type' => 'cron',
+      'configurable' => FALSE,
+    ),  
+    'realtime_taxonomy_create_action' => array(
+      'description' => t('Publish realtime notifications when a taxonomy term is created.'),
+      'type' => 'taxonomy',
+      'configurable' => FALSE,
       'hooks' => array(
-        'comment' => array('insert', 'update', 'delete'),
+        'taxonomy' => array('insert'),
       ),
     ),
-    'realtime_comment_unpublish_action' => array(
-      'description' => t('Publish realtime notifications Unpublish comment'),
-      'type' => 'comment',
-      'configurable' => TRUE,
+    'realtime_taxonomy_update_action' => array(
+      'description' => t('Publish realtime notifications when a taxonomy term is updated.'),
+      'type' => 'taxonomy',
+      'configurable' => FALSE,
       'hooks' => array(
-        'comment' => array('insert', 'update', 'delete'),
-      )
+        'taxonomy' => array('update'),
+      ),
     ),
-    'realtime_comment_unpublish_by_keyword_action' => array(
-      'description' => t('Publish realtime notifications Unpublish comment containing keyword(s)'),
+    'realtime_taxonomy_delete_action' => array(
+      'description' => t('Publish realtime notifications when a taxonomy term is deleted.'),
+      'type' => 'taxonomy',
+      'configurable' => FALSE,
+      'hooks' => array(
+        'taxonomy' => array('delete'),
+      ),
+    ),    
+    'realtime_comment_create_action' => array(
+      'description' => t('Publish realtime notifications when a comment is created.'),
       'type' => 'comment',
       'configurable' => FALSE,
       'hooks' => array(
-        'comment' => array('insert', 'update', 'delete'),
-      )
+        'comment' => array('insert'),
+      ),
     ),
+    'realtime_comment_delete_action' => array(
+      'description' => t('Publish realtime notifications when a comment is deleted'),
+      'type' => 'comment',
+      'configurable' => FALSE,
+      'hooks' => array(
+        'comment' => array('delete'),
+      ),
+    ),
+    'realtime_comment_update_action' => array(
+      'description' => t('Publish realtime notifications when a comment is updated'),
+      'type' => 'comment',
+      'configurable' => FALSE,
+      'hooks' => array(
+        'comment' => array('update'),
+      ),
+    ),
+    'realtime_comment_view_action' => array(
+      'description' => t('Publish realtime notifications when a comment is viewed'),
+      'type' => 'comment',
+      'configurable' => FALSE,
+      'hooks' => array(
+        'comment' => array('view'),
+      ),
+    ),
+    'realtime_comment_validate_action' => array(
+      'description' => t('Publish realtime notifications when a comment is validated'),
+      'type' => 'comment',
+      'configurable' => FALSE,
+      'hooks' => array(
+        'comment' => array('validate'),
+      ),
+    ),
+    'realtime_comment_publish_action' => array(
+      'description' => t('Publish realtime notifications when a comment is published'),
+      'type' => 'comment',
+      'configurable' => FALSE,
+      'hooks' => array(
+        'comment' => array('publish'),
+      ),
+    ),
+    'realtime_comment_unpublish_action' => array(
+      'description' => t('Publish realtime notifications when a comment is unpublished'),
+      'type' => 'comment',
+      'configurable' => FALSE,
+      'hooks' => array(
+        'comment' => array('unpublish'),
+      ),
+    ),                     
     'realtime_user_login_notification' => array(
       'description' => t('Publish realtime notifications When a User log in'),
       'type' => 'user',
@@ -119,14 +106,53 @@ function nodejs_actions_action_info() {
       'hooks' => array(
         'user' => array('logout'),
       )
-    ),    
-    /*
-    'realtime_node_insert_notification' => array(
-      'description' => t('Publish realtime notifications When a node is added'),
+    ),
+    'realtime_user_insert_notification' => array(
+      'description' => t('Publish realtime notifications When a new User account is created.'),
+      'type' => 'user',
+      'configurable' => FALSE,
+      'hooks' => array(
+        'user' => array('insert'),
+      )
+    ), 
+    'realtime_user_delete_notification' => array(
+      'description' => t('Publish realtime notifications When a User account is deleted.'),
+      'type' => 'user',
+      'configurable' => FALSE,
+      'hooks' => array(
+        'user' => array('delete'),
+      )
+    ),
+    'realtime_user_update_notification' => array(
+      'description' => t('Publish realtime notifications When a User account is updated.'),
+      'type' => 'user',
+      'configurable' => FALSE,
+      'hooks' => array(
+        'user' => array('update'),
+      )
+    ),
+    'realtime_user_view_notification' => array(
+      'description' => t('Publish realtime notifications When a User account is viewed.'),
+      'type' => 'user',
+      'configurable' => FALSE,
+      'hooks' => array(
+        'user' => array('view'),
+      )
+    ),      
+    'realtime_node_view_notification' => array(
+      'description' => t('Publish realtime notifications When a node is viewed by an authenticated user.'),
       'type' => 'node',
       'configurable' => FALSE,
       'hooks' => array(
-        'node' => array('insert'),
+        'nodeapi' => array('view'),
+      )
+    ),                  
+    'realtime_node_insert_notification' => array(
+      'description' => t('Publish realtime notifications When a node is inserted'),
+      'type' => 'node',
+      'configurable' => FALSE,
+      'hooks' => array(
+        'nodeapi' => array('insert'),
       )
     ),
     'realtime_node_update_notification' => array(
@@ -134,7 +160,7 @@ function nodejs_actions_action_info() {
       'type' => 'node',
       'configurable' => FALSE,
       'hooks' => array(
-        'node' => array('update'),
+        'nodeapi' => array('update'),
       )
     ),
     'realtime_node_delete_notification' => array(
@@ -142,91 +168,278 @@ function nodejs_actions_action_info() {
       'type' => 'node',
       'configurable' => FALSE,
       'hooks' => array(
-        'node' => array('delete'),
+        'nodeapi' => array('delete'),
       )
-    ),*/    
+    ),    
   );
 }
 
-/**
- * User login action callback.
- *
- * @param object $user
- */
-function realtime_user_login_notification($user) {
-    $subject = t('A user %action.', array('%action' => $action));
-    $link = l($user->name, 'user/' . $user->uid);
-    $body = t('The user !link has logged in.', array('!link' => $link, '%action' => $action));
-    nodejs_actions_enqueue_message($subject, $body);
+function realtime_comment_publish_action_submit($form, $form_state) {
+  return array('keywords' => drupal_explode_tags($form_state['values']['keywords']));
 }
 
-/**
- * User logout action callback.
- *
- * @param object $user
- */
-function realtime_user_logout_notification($user) {
-    $subject = t('A user %action.', array('%action' => $action));
-    $link = l($user->name, 'user/' . $user->uid);
-    $body = t('The user !link has logged out.', array('!link' => $link, '%action' => $action));
-    nodejs_actions_enqueue_message($subject, $body);
+
+function realtime_comment_publish_action_form($context) {
+  $form['keywords'] = array(
+    '#title' => t('Keywords'), 
+    '#type' => 'textarea', 
+    '#description' => t('The comment will be unpublished if it contains any of the character sequences above. Use a comma-separated list of character sequences. Example: funny, bungee jumping, "Company, Inc.". Character sequences are case-sensitive.'), 
+    '#default_value' => isset($context['keywords']) ? drupal_implode_tags($context['keywords']) : '',
+  );
+  return $form;
 }
 
-function realtime_comment_publish_action($comment, $context = array()) {
+function realtime_node_insert_notification($context = array()) {
+  $user = $context->name;
+  $link = l($context->title, 'node/' . $context->nid);
+  $body = t('The user !user have %action a node !link', array('!user' => $user, '%action' => t('saved'), '!link' => $link));
+  nodejs_actions_enqueue_message(t('New node created'), $body);
+}
+
+function realtime_node_update_notification($context = array()) {
+  $user = $context->name;
+  $link = l($context->title, 'node/' . $context->nid);
+  $body = t('The user !user have %action a node !link', array('!user' => $user, '%action' => t('updated'), '!link' => $link));
+  nodejs_actions_enqueue_message(t('Node updated'), $body);
+}
+
+function realtime_node_delete_notification($context = array()) {
+  $user = $context->name;
+  $link = l($context->title, 'node/' . $context->nid);
+  $body = t('The user !user have %action a node !link', array('!user' => $user, '%action' => t('deleted'), '!link' => $link));
+  nodejs_actions_enqueue_message(t('Node deleted'), $body);
+}
+
+function realtime_node_view_notification($context = array()) {
+  $user = $context->name;
+  $link = l($context->title, 'node/' . $context->nid);
+  $body = t('The user !user have %action the node !link', array('!user' => $user, '%action' => t('viewed'), '!link' => $link));
+  nodejs_actions_enqueue_message(t('Node viewed'), $body);
+}
+function realtime_user_logout_notification($comment, $context = array()) {
+  if ($context['op'] == 'logout') {
+  $user = $context['form_values']['name'];
+  $body = t('The user !user have %action.', array('!user' => $user, '%action' => t('logged out')));
+  }
+  nodejs_actions_enqueue_message(t('A user have logged out'), $body);
+}
+
+function realtime_user_login_notification($comment, $context = array()) {
+  if ($context['op'] == 'login') {
+  $user = $context['form_values']['name'];
+  $body = t('The user !user have %action.', array('!user' => $user, '%action' => t('logged in')));
+  }
+  nodejs_actions_enqueue_message(t('A user have logged in!'), $body);
+}
+
+function realtime_user_insert_notification($comment, $context = array()) {
+  if ($context['op'] == 'insert') {
+  $user = $context['form_values']['name'];
+  $link = l($user, 'user/' . $context['form_values']['uid']);
+  $body = t('The new user !link account have been %action.', array('!link' => $link, '%action' => t('created')));
+  }
+  nodejs_actions_enqueue_message(t('New user account!'), $body);
+}
+
+function realtime_user_delete_notification($comment, $context = array()) {
+  if ($context['op'] == 'delete') {
+  $user = $context['form_values']['name'];
+  $link = l($user, 'user/' . $context['form_values']['uid']);
+  $body = t('The user !link account have been %action.', array('!link' => $link, '%action' => t('deleted')));
+  }
+  nodejs_actions_enqueue_message(t('User account deleted!'), $body);
+}
+
+function realtime_user_update_notification($comment, $context = array()) {
+  $user = $context['form_values']['name'];
+  $link = l($user, 'user/' . $context['form_values']['uid']);
+  $body = t('The user !link account have been %action.', array('!link' => $link, '%action' => t('updated')));
+  nodejs_actions_enqueue_message(t('User account updated!'), $body);
+}
+
+function realtime_user_view_notification($comment, $context = array()) {
+  $user = user_load(arg(1));
+  $user = $user->name;
+  $link = l($user, 'user/' . $user->uid);  
+  $body = t('This user !link account is being %action.', array('!link' => $link, '%action' => t('viewed')));
+  nodejs_actions_enqueue_message(t('User account viewed!'), $body);
+}
+
+function realtime_taxonomy_create_action($comment, $context = array()) {
+  $term = taxonomy_get_term(arg(3));
+  $name = $term->name;
+  $voc = taxonomy_vocabulary_load($term->vid);
+  $vocabulary = $voc->name;
+  $link = l($name, 'taxonomy/term/' . $term->tid);  
+  $body = t('This term !link in the vocabulary !voca has been %action.', array('!link' => $link, '!voca' => $vocabulary, '%action' => t('created')));
+  nodejs_actions_enqueue_message(t('Taxonomy term added!'), $body);
+}
+
+function realtime_taxonomy_update_action($comment, $context = array()) {
+  $term = taxonomy_get_term(arg(3));
+  $name = $term->name;
+  $voc = taxonomy_vocabulary_load($term->vid);
+  $vocabulary = $voc->name;
+  $link = l($name, 'taxonomy/term/' . $term->tid);  
+  $body = t('This term !link in the vocabulary !voca has been %action.', array('!link' => $link, '!voca' => $vocabulary, '%action' => t('created')));
+  nodejs_actions_enqueue_message(t('Taxonomy term updated!'), $body);
+}
+
+function realtime_taxonomy_delete_action($comment, $context = array()) {
+  $term = taxonomy_get_term(arg(3));
+  $name = $term->name;
+  $voc = taxonomy_vocabulary_load($term->vid);
+  $vocabulary = $voc->name;
+  $link = l($name, 'taxonomy/term/' . $term->tid);  
+  $body = t('This term !link in the vocabulary !voca has been %action.', array('!link' => $link, '!voca' => $vocabulary, '%action' => t('created')));
+  nodejs_actions_enqueue_message(t('Taxonomy term deleted!'), $body);
+}
+
+function realtime_cron_action($comment, $context = array()) {
+  $body = t('The cron has run.');
+  nodejs_actions_enqueue_message(t('System'), $body);
+}
+
+function realtime_comment_unpublish_action($comment, $context = array()) {
+
   if (isset($comment->cid)) {
     $cid = $comment->cid;
     $subject = $comment->subject;
+	$action = t('unpublished');		
   }
   else {
     $cid = $context['cid'];
     $subject = db_result(db_query("SELECT subject FROM {comments} WHERE cid = %d", $cid));
   }
-  db_query('UPDATE {comments} SET status = %d WHERE cid = %d', COMMENT_PUBLISHED, $cid);
-  watchdog('action', 'Published comment %subject.', array('%subject' => $subject));
+  $link = l($comment->subject, 'node/' . $comment->nid, array('fragment' => 'comment-' . $comment->cid));
+  $body = t('The comment !link was %action.', array('!link' => $link, '%action' => $action));
+
+  nodejs_actions_enqueue_message($subject, $body);
 }
 
-/**
- * Implements hook_action_info().
- */
- /*
-function nodejs_actions_action_info() {
-  $actions = array();
+function realtime_comment_publish_action($comment, $context = array()) {
 
-  $triggers = nodejs_actions_trigger_info();
-
-  drupal_alter('trigger_info', $triggers);
-
-  foreach (array('node', 'user', 'comment') as $type) {
-    $actions['nodejs_actions_' . $type . '_action'] = array(
-      'type' => $type,
-      'triggers' => array_keys($triggers[$type]),
-      'label' => t('Publish realtime notifications of @type activity.', array('@type' => $type)),
-      'configurable' => FALSE,
-    );
+  if (isset($comment->cid)) {
+    $cid = $comment->cid;
+    $subject = $comment->subject;
+	$action = t('published');
   }
-  return $actions;
+  else {
+    $cid = $context['cid'];
+    $subject = db_result(db_query("SELECT subject FROM {comments} WHERE cid = %d", $cid));
+  }
+  $link = l($comment->subject, 'node/' . $comment->nid, array('fragment' => 'comment-' . $comment->cid));
+  $body = t('The comment !link was %action.', array('!link' => $link, '%action' => $action));
+
+  nodejs_actions_enqueue_message($subject, $body);
 }
-*/
+
+function realtime_comment_view_action($comment, $context = array()) {
+
+  if (isset($comment->cid)) {
+    $cid = $comment->cid;
+    $subject = $comment->subject;
+	$action = t('viewed');
+  }
+  else {
+    $cid = $context['cid'];
+    $subject = db_result(db_query("SELECT subject FROM {comments} WHERE cid = %d", $cid));
+  }
+  $link = l($comment->subject, 'node/' . $comment->nid, array('fragment' => 'comment-' . $comment->cid));
+  $body = t('The comment !link was %action.', array('!link' => $link, '%action' => $action));
+
+  nodejs_actions_enqueue_message($subject, $body);
+}
+
+function realtime_comment_validate_action($comment, $context = array()) {
+
+  if (isset($comment->cid)) {
+    $cid = $comment->cid;
+    $subject = $comment->subject;
+	$action = t('validated');		
+  }
+  else {
+    $cid = $context['cid'];
+    $subject = db_result(db_query("SELECT subject FROM {comments} WHERE cid = %d", $cid));
+  }
+  $link = l($comment->subject, 'node/' . $comment->nid, array('fragment' => 'comment-' . $comment->cid));
+  $body = t('The comment !link is being %action.', array('!link' => $link, '%action' => $action));
+
+  nodejs_actions_enqueue_message($subject, $body);
+}
+
+function realtime_comment_create_action($comment, $context = array()) {
+
+  if (isset($comment->cid)) {
+    $cid = $comment->cid;
+    $subject = $comment->subject;
+	$action = t('inserted');	
+  }
+  else {
+    $cid = $context['cid'];
+    $subject = db_result(db_query("SELECT subject FROM {comments} WHERE cid = %d", $cid));
+  }
+  $link = l($comment->subject, 'node/' . $comment->nid, array('fragment' => 'comment-' . $comment->cid));
+  $body = t('The comment !link was %action.', array('!link' => $link, '%action' => $action));
+
+  nodejs_actions_enqueue_message($subject, $body);
+}
+
+function realtime_comment_update_action($comment, $context = array()) {
+
+  if (isset($comment->cid)) {
+    $cid = $comment->cid;
+    $subject = $comment->subject;
+	$action = t('updated');			
+  }
+  else {
+    $cid = $context['cid'];
+    $subject = db_result(db_query("SELECT subject FROM {comments} WHERE cid = %d", $cid));
+  }
+  $link = l($comment->subject, 'node/' . $comment->nid, array('fragment' => 'comment-' . $comment->cid));
+  $body = t('The comment !link was %action.', array('!link' => $link, '%action' => $action));
+
+  nodejs_actions_enqueue_message($subject, $body);
+}
+
+function realtime_comment_delete_action($comment, $context = array()) {
+
+  if (isset($comment->cid)) {
+    $cid = $comment->cid;
+    $subject = $comment->subject;
+	$action = t('deleted');		
+  }
+  else {
+    $cid = $context['cid'];
+    $subject = db_result(db_query("SELECT subject FROM {comments} WHERE cid = %d", $cid));
+  }
+  $link = l($comment->subject, 'node/' . $comment->nid, array('fragment' => 'comment-' . $comment->cid));
+  $body = t('The comment !link was %action.', array('!link' => $link, '%action' => $action));
+
+  nodejs_actions_enqueue_message($subject, $body);
+}
 
 /**
  * Try to get the action for the given trigger context.
- * 
- * @param mixed $context 
+ *
+ * @param mixed $context
  * @return mixed
  */
+ /*
 function nodejs_actions_get_action($context) {
   $triggers = nodejs_actions_get_triggers();
   if (isset($context['hook'], $triggers[$context['hook']])) {
     return $triggers[$context['hook']];
   }
   return FALSE;
-}
+}*/
 
 /**
  * Returns a list of triggers that we supply an action for.
- * 
+ *
  * @return array
  */
+ /*
 function nodejs_actions_get_triggers() {
   return array(
     'comment_insert' => t('inserted'),
@@ -238,7 +451,7 @@ function nodejs_actions_get_triggers() {
     'user_insert' => t('was created'),
     'user_updated' => t('was updated'),
   );
-}
+}*/
 
 /**
  * Node object action callback.
@@ -246,6 +459,7 @@ function nodejs_actions_get_triggers() {
  * @param object $node
  * @param array $context
  */
+ /*
 function nodejs_actions_node_action($node, $context = array()) {
   if ($action = nodejs_actions_get_action($context)) {
     $subject = t('Node %action.', array('%action' => $action));
@@ -253,7 +467,7 @@ function nodejs_actions_node_action($node, $context = array()) {
     $body = t('The node !link was %action.', array('!link' => $link, '%action' => $action));
     nodejs_actions_enqueue_message($subject, $body);
   }
-}
+}*/
 
 /**
  * Comment object action callback.
@@ -261,6 +475,7 @@ function nodejs_actions_node_action($node, $context = array()) {
  * @param object $node
  * @param array $context
  */
+ /*
 function nodejs_actions_comment_action($comment, $context = array()) {
   if ($action = nodejs_actions_get_action($context)) {
     $subject = t('Comment %action.', array('%action' => $action));
@@ -268,7 +483,7 @@ function nodejs_actions_comment_action($comment, $context = array()) {
     $body = t('The comment !link was %action.', array('!link' => $link, '%action' => $action));
     nodejs_actions_enqueue_message($subject, $body);
   }
-}
+}*/
 
 /**
  * User object action callback.
@@ -276,6 +491,7 @@ function nodejs_actions_comment_action($comment, $context = array()) {
  * @param object $user
  * @param array $context
  */
+ /*
 function nodejs_actions_user_action($user, $context = array()) {
   if ($action = nodejs_actions_get_action($context)) {
     $subject = t('A user %action.', array('%action' => $action));
@@ -283,14 +499,15 @@ function nodejs_actions_user_action($user, $context = array()) {
     $body = t('The user !link %action.', array('!link' => $link, '%action' => $action));
     nodejs_actions_enqueue_message($subject, $body);
   }
-}
+}*/
 
 /**
  * Helper function for enqueueing 'nodejs_notify' channel messages.
- * 
+ *
  * @param mixed $subject
  * @param mixed $body
  */
+ 
 function nodejs_actions_enqueue_message($subject, $body) {
   $message = (object) array(
     'broadcast' => TRUE,
@@ -300,5 +517,7 @@ function nodejs_actions_enqueue_message($subject, $body) {
     ),
     'channel' => 'nodejs_notify',
   );
+
   nodejs_enqueue_message($message);
 }
+
