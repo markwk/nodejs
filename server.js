@@ -859,8 +859,8 @@ var setupClientConnection = function (sessionId, authData, contentTokens) {
 var server;
 if (settings.scheme == 'https') {
   server = express.createServer({
-    key: fs.readFileSync(settings.key),
-    cert: fs.readFileSync(settings.cert)
+    key: fs.readFileSync(settings.sslKeyPath),
+    cert: fs.readFileSync(settings.sslCertPath)
   });
 }
 else {
