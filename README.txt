@@ -1,7 +1,7 @@
-Node.js integration
+B1;2600;0cNode.js integration
 ===================
 
-This module adds Node.js integration to Drupal.
+This module adds Node.js integration to Drupal 6.
 
 It is currently alpha software, use at your own risk. It may eat your lunch and kill your kittens.
 
@@ -10,8 +10,8 @@ Setup
 
 Node.js server:
   1. Install Node.js.
-  2. Install Express module.
-  3. Install Socket.Io module.
+  2. Install Express module. npm install express
+  3. Install Socket.Io module. npm install socket.io
   4. Optionally, copy 'server.js' to a directory specific to the Node.js server
      used by Drupal.
   5. Copy 'nodejs.config.js.example' to 'nodejs.config.js' (in the same

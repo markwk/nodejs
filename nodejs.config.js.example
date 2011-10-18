@@ -36,8 +36,8 @@
  *
  *  -- host: Host name of the Drupal site.
  *
- *  -- authPath: http path on which the Drupal node.js module listens for
- *  authentication check requests. Must end with /.
+ *  -- messagePath: http path on which the Drupal node.js module listens for
+ *  messages from the Node.js server process.
  *
  * extensions: An array of names of node.js modules that should be loaded as
  * extensions to the node.js server.
@@ -48,6 +48,13 @@
  * clientsCanWriteToClients: global flag that allows all clients to be written
  * to by client sockets without going via the backend. defaults to false
  *
+ * transports: a list of transports to be used by Socket.Io.
+ *
+ * jsMinification: whether to call io.enable('browser client minification').
+ *
+ * jsEtag: whether to call io.enable('browser client etag').
+ *
+ * logLevel: the log level to be used by Socket.Io.
  */
 backendSettings = {
   'scheme': 'http',
@@ -55,16 +62,20 @@ backendSettings = {
   'port': 8080,
   'key': '/path/to/key/file',
   'cert': '/path/to/cert/file',
-  'resource': '/node.js/realtime',
+  'resource': '/socket.io',
   'publishUrl': '/nodejs/publish',
   'serviceKey': '',
   'backend': {
     'port': 80,
     'host': 'your.drupal.sites.hostname',
-    'authPath': '/nodejs/auth/'
-   },
-   'extensions': [],
-   'clientsCanWriteToChannels': false,
-   'clientsCanWriteToClients': false
+    'messagePath': '/nodejs/message'
+  },
+  'extensions': [],
+  'clientsCanWriteToChannels': true,
+  'clientsCanWriteToClients': true,
+  'transports': ['websocket', 'flashsocket', 'htmlfile', 'xhr-polling', 'jsonp-polling'],
+  'jsMinification': true,
+  'jsEtag': true,
+  'logLevel': 2
 };
 

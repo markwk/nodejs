@@ -137,6 +137,7 @@ var authenticateClientCallback = function (response) {
       return;
     }
     var authData = false;
+    console.log(requestBody);
     try {
       authData = JSON.parse(requestBody);
     }

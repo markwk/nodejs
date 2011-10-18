@@ -42,16 +42,23 @@
  */
 backendSettings = {
   'scheme': 'http',
-  'host': '127.0.0.1',
-  'port': 8088,
+  'host': 'localhost',
+  'port': 8080,
   'key': '/path/to/key/file',
   'cert': '/path/to/cert/file',
-  'resource': '/node.js/realtime',
+  'resource': 'socket.io',
   'publishUrl': '/nodejs/publish',
   'serviceKey': '',
   'backend': {
     'port': 80,
-    'host': '127.0.0.1',
-    'authPath': '/nodejs/auth/'
-   }
+    'host': 'drupal6',
+    'messagePath': '/nodejs/message'
+  },
+  'extensions': [],
+  'clientsCanWriteToChannels': false,
+  'clientsCanWriteToClients': false,
+  'transports': ['websocket', 'flashsocket', 'htmlfile', 'xhr-polling', 'jsonp-polling'],
+  'jsMinification': true,
+  'jsEtag': true,
+  'logLevel': 1
 };
