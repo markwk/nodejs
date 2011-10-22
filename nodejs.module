@@ -502,8 +502,8 @@ function nodejs_get_config() {
   $defaults = array(
     'scheme' => variable_get('nodejs_server_scheme', 'http'),
     'secure' => variable_get('nodejs_server_scheme', 'http') == 'https' ? 1 : 0,
-    'host' => variable_get('nodejs_server_host', 'localhost'),
-    'port' => variable_get('nodejs_server_port', '8080'),
+    'host' => variable_get('nodejs_config_host', 'localhost'),
+    'port' => variable_get('nodejs_config_port', '8080'),
     'resource' => '/socket.io',
     'authToken' => md5(session_id()),
     'serviceKey' => variable_get('nodejs_service_key', ''),
