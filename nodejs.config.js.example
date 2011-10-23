@@ -1,34 +1,40 @@
 /**
- * backendSettings defines configuration settings for server.js, the server code
- * executed by node.
+ * The settings hash defines configuration settings for server.js, the server
+ * code executed by node.
  *
- * The following properties should be defined for the backendSettings variable:
+ * The following properties should be defined for the settings variable:
  *
  * scheme: 'http' or 'https'. This defines whether the node server should
  * contact the Drupal site using http or https. If https is used, the key and
  * cert must be set to valid files.
+ *
+ * port: Specify the TCP port that the node server should listen on.
  *
  * host: Specify the host name or IP address that the node server should listen
  * on. Leave blank to listen for any host name. Otherwise, the server will only
  * respond to names that match the IP address given (or resolved from the given
  * name).
  *
- * port: Specify the TCP port that the node server should listen on.
- *
- * key: File system path to a key used for https communication with the server
- * and clients.
- *
- * cert: File system path to a certificate used for https communication with the
- * server and clients.
- *
  * resource: http path that the node server should respond to. This value needs
  * to match the Drupal node.js configuration.
  *
- * publishUrl: http path on which the node server should accept messages from
- * the Drupal site.
- *
  * serviceKey: An arbitrary string used as a secret between the node.js server
  * and the Drupal site.
+ *
+ * debug: Whether to write a bunch of debug information to the console. false
+ * by default.
+ *
+ * baseAuthPath: base path for all requests from the backend. This is used to
+ * set the authentication call for all requests from the backend.
+ *
+ * sslKeyPath: File system path to a key used for https communication with the server
+ * and clients.
+ *
+ * sslCertPath: File system path to a certificate used for https communication with the
+ * server and clients.
+ *
+ * publishUrl: http path on which the node server should accept messages from
+ * the Drupal site.
  *
  * backend: An object with the following properties:
  *
@@ -38,6 +44,8 @@
  *
  *  -- messagePath: http path on which the Drupal node.js module listens for
  *  messages from the Node.js server process.
+ *
+ *  -- basePath: the base path of your backend site, defaults to ''.
  *
  * extensions: An array of names of node.js modules that should be loaded as
  * extensions to the node.js server.
@@ -56,26 +64,35 @@
  *
  * logLevel: the log level to be used by Socket.Io.
  */
-backendSettings = {
-  'scheme': 'http',
-  'host': 'your.nodejs.server.hostname',
-  'port': 8080,
-  'key': '/path/to/key/file',
-  'cert': '/path/to/cert/file',
-  'resource': '/socket.io',
-  'publishUrl': '/nodejs/publish',
-  'serviceKey': '',
-  'backend': {
-    'port': 80,
-    'host': 'your.drupal.sites.hostname',
-    'messagePath': '/nodejs/message'
-  },
-  'extensions': [],
-  'clientsCanWriteToChannels': true,
-  'clientsCanWriteToClients': true,
-  'transports': ['websocket', 'flashsocket', 'htmlfile', 'xhr-polling', 'jsonp-polling'],
-  'jsMinification': true,
-  'jsEtag': true,
-  'logLevel': 2
+settings = {
+  scheme: 'http',
+  port: 8080,
+  host: 'localhost',
+  resource: '/socket.io',
+  serviceKey: '',
+  debug: false,
+  sslKeyPath: '',
+  sslCertPath: '',
+  baseAuthPath: '/nodejs/',
+  publishUrl: 'publish',
+  kickUserUrl: 'user/kick/:uid',
+  logoutUserUrl: 'user/logout/:authtoken',
+  addUserToChannelUrl: 'user/channel/add/:channel/:uid',
+  removeUserFromChannelUrl: 'user/channel/remove/:channel/:uid',
+  addChannelUrl: 'channel/add/:channel',
+  removeChannelUrl: 'channel/remove/:channel',
+  setUserPresenceListUrl: 'user/presence-list/:uid/:uidList',
+  addAuthTokenToChannelUrl: 'authtoken/channel/add/:channel/:uid',
+  removeAuthTokenFromChannelUrl: 'authtoken/channel/remove/:channel/:uid',
+  toggleDebugUrl: 'debug/toggle',
+  contentTokenUrl: 'content/token',
+  publishMessageToContentChannelUrl: 'content/token/message',
+  extensions: [],
+  clientsCanWriteToChannels: false,
+  clientsCanWriteToClients: false,
+  transports: ['websocket', 'flashsocket', 'htmlfile', 'xhr-polling', 'jsonp-polling'],
+  jsMinification: true,
+  jsEtag: true,
+  logLevel: 1
 };
 
