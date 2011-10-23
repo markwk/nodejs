@@ -32,6 +32,8 @@ var channels = {},
       logoutUserUrl: 'user/logout/:authtoken',
       addUserToChannelUrl: 'user/channel/add/:channel/:uid',
       removeUserFromChannelUrl: 'user/channel/remove/:channel/:uid',
+      addChannelUrl: 'channel/add/:channel',
+      removeChannelUrl: 'channel/remove/:channel',
       setUserPresenceListUrl: 'user/presence-list/:uid/:uidList',
       addAuthTokenToChannelUrl: 'authtoken/channel/add/:channel/:uid',
       removeAuthTokenFromChannelUrl: 'authtoken/channel/remove/:channel/:uid',
@@ -583,6 +585,64 @@ var addClientToChannel = function (sessionId, channel) {
 };
 
 /**
+ * Remove a channel.
+ */
+var removeChannel = function (request, response) {
+  var channel = request.params.channel || '';
+  if (channel) {
+    if (!/^[a-z0-9_]+$/i.test(channel)) {
+      console.log('Invalid channel: ' + channel);
+      response.send({'status': 'failed', 'error': 'Invalid channel name.'});
+      return;
+    }
+    if (channels[channel]) {
+      delete channels[channel];
+      if (settings.debug) {
+        console.log("Successfully removed channel '" + channel + "'");
+      }
+      response.send({'status': 'success'});
+    }
+    else {
+      console.log("Non-existent channel name '" + channel + "'");
+      response.send({'status': 'failed', 'error': 'Non-existent channel name.'});
+      return;
+    }
+  }
+  else {
+    console.log("Missing channel");
+    response.send({'status': 'failed', 'error': 'Invalid data: missing channel'});
+  }
+}
+
+/**
+ * Add a channel.
+ */
+var addChannel = function (request, response) {
+  var channel = request.params.channel || '';
+  if (channel) {
+    if (!/^[a-z0-9_]+$/i.test(channel)) {
+      console.log('Invalid channel: ' + channel);
+      response.send({'status': 'failed', 'error': 'Invalid channel name.'});
+      return;
+    }
+    if (channels[channel]) {
+      console.log("Channel name '" + channel + "' already exists.");
+      response.send({'status': 'failed', 'error': "Channel name '" + channel + "' already exists."});
+      return;
+    }
+    channels[channel] = {'sessionIds': {}};
+    if (settings.debug) {
+      console.log("Successfully added channel '" + channel + "'");
+    }
+    response.send({'status': 'success'});
+  }
+  else {
+    console.log("Missing channel");
+    response.send({'status': 'failed', 'error': 'Invalid data: missing channel'});
+  }
+}
+
+/**
  * Remove a user from a channel.
  */
 var removeUserFromChannel = function (request, response) {
@@ -872,6 +932,8 @@ server.get(settings.baseAuthPath + settings.kickUserUrl, kickUser);
 server.get(settings.baseAuthPath + settings.logoutUserUrl, logoutUser);
 server.get(settings.baseAuthPath + settings.addUserToChannelUrl, addUserToChannel);
 server.get(settings.baseAuthPath + settings.removeUserFromChannelUrl, removeUserFromChannel);
+server.get(settings.baseAuthPath + settings.addChannelUrl, addChannel);
+server.get(settings.baseAuthPath + settings.removeChannelUrl, removeChannel);
 server.get(settings.baseAuthPath + settings.setUserPresenceListUrl, setUserPresenceList);
 server.get(settings.baseAuthPath + settings.toggleDebugUrl, toggleDebug);
 server.post(settings.baseAuthPath + settings.contentTokenUrl, setContentToken);

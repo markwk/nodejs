@@ -79,6 +79,8 @@ settings = {
   logoutUserUrl: 'user/logout/:authtoken',
   addUserToChannelUrl: 'user/channel/add/:channel/:uid',
   removeUserFromChannelUrl: 'user/channel/remove/:channel/:uid',
+  addChannelUrl: 'channel/add/:channel',
+  removeChannelUrl: 'channel/remove/:channel',
   setUserPresenceListUrl: 'user/presence-list/:uid/:uidList',
   addAuthTokenToChannelUrl: 'authtoken/channel/add/:channel/:uid',
   removeAuthTokenFromChannelUrl: 'authtoken/channel/remove/:channel/:uid',
