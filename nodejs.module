@@ -260,20 +260,36 @@ function nodejs_menu() {
 }
 
 /**
- * Get a list of active channels from the node.js server.
+ * Add a channel to the Node.js server.
  *
- * @access public
- * @return array
+ * @param channel
+ * @return boolean
  */
-function nodejs_get_channels() {
-  $response = Nodejs::getChannels();
+function nodejs_get_add_channel($channel) {
+  $response = Nodejs::addChannel($channel);
   if (isset($response->error)) {
-    watchdog('nodejs', t('Error getting channel list from Node.js server: [%code] %error', array('%code' => $response->code, '%error' => $response->error)));
-    return array();
+    watchdog('nodejs', t('Error adding channel to the Node.js server: [%code] %error', array('%code' => $response->code, '%error' => $response->error)));
+    return FALSE;
   }
   else {
-    $channels = drupal_json_decode($response->data);
-    return (array) $channels;
+    return TRUE;
+  }
+}
+
+/**
+ * Remove a channel from the Node.js server.
+ *
+ * @param channel
+ * @return boolean
+ */
+function nodejs_get_remove_channel($channel) {
+  $response = Nodejs::removeChannel($channel);
+  if (isset($response->error)) {
+    watchdog('nodejs', t('Error removing channel from the Node.js server: [%code] %error', array('%code' => $response->code, '%error' => $response->error)));
+    return FALSE;
+  }
+  else {
+    return TRUE;
   }
 }
 
@@ -656,6 +672,16 @@ class Nodejs {
   public static function removeUserFromChannel($uid, $channel) {
     self::initConfig();
     return drupal_http_request(self::$baseUrl . "nodejs/user/channel/remove/$channel/$uid", array('headers' => self::$headers));
+  }
+
+  public static function addChannel($channel) {
+    self::initConfig();
+    return drupal_http_request(self::$baseUrl . "nodejs/channel/add/$channel", array('headers' => self::$headers));
+  }
+
+  public static function removeChannel($channel) {
+    self::initConfig();
+    return drupal_http_request(self::$baseUrl . "nodejs/channel/remove/$channel", array('headers' => self::$headers));
   }
 }
 
