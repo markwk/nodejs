@@ -4,7 +4,6 @@
  * Implements hook_init().
  */
 function nodejs_notify_init() {
-  drupal_add_library('system', 'ui.dialog');
   drupal_add_css(drupal_get_path('module', 'nodejs_notify') . '/libraries/jgrowl/jquery.jgrowl.css');
   drupal_add_js(drupal_get_path('module', 'nodejs_notify') . '/libraries/jgrowl/jquery.jgrowl.js');
   drupal_add_js(array('nodejs_notify' => array('notification_time' => variable_get('nodejs_notify_notification_lifetime_seconds', 3))), 'setting');
@@ -25,11 +24,11 @@ function nodejs_notify_nodejs_handlers_info() {
 function nodejs_notify_permission() {
   return array(
     'send nodejs broadcast' => array(
-      'title' => t('Perform system-wide broadcasts.'), 
+      'title' => t('Perform system-wide broadcasts.'),
       'description' => t('Perform system-wide broadcasts to all users.'),
     ),
     'administer nodejs_notify configuration' => array(
-      'title' => t('Administer Node.js Notification Configuration'), 
+      'title' => t('Administer Node.js Notification Configuration'),
       'description' => t('Administer configuration for node.js notifications'),
     ),
   );
