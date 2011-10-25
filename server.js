@@ -91,23 +91,24 @@ var channelIsClientWritable = function (channel) {
  * Send a message to the backend.
  */
 var sendMessageToBackend = function (message, callback) {
+	console.log(settings.port);
   var requestBody = querystring.stringify({
         messageJson: JSON.stringify(message),
         serviceKey: settings.serviceKey
       }),
       options = {
-        port: settings.backend.port,
-        host: settings.backend.host,
+        port: settings.port,
+        host: settings.host,
         headers: {
           'Content-Length': Buffer.byteLength(requestBody),
           'Content-Type': 'application/x-www-form-urlencoded'
         },
         agent: false,
         method: 'POST',
-        agent: http.getAgent(settings.backend.host, settings.backend.port),
-        path: settings.backend.basePath + settings.backend.messagePath
+        agent: http.getAgent(settings.host, settings.port),
+        path: settings.baseAuthPath + settings.messagePath
       },
-      scheme = settings.backend.scheme,
+      scheme = settings.scheme,
       request;
 
   if (settings.debug) {
