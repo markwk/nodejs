@@ -97,16 +97,16 @@ var sendMessageToBackend = function (message, callback) {
         serviceKey: settings.serviceKey
       }),
       options = {
-        port: settings.port,
-        host: settings.host,
+        port: settings.backend.port,
+        host: settings.backend.host,
         headers: {
           'Content-Length': Buffer.byteLength(requestBody),
           'Content-Type': 'application/x-www-form-urlencoded'
         },
         agent: false,
         method: 'POST',
-        agent: http.getAgent(settings.host, settings.port),
-        path: settings.baseAuthPath + settings.messagePath
+        agent: http.getAgent(settings.backend.host, settings.backend.port),
+        path: settings.backend.messagePath
       },
       scheme = settings.scheme,
       request;
