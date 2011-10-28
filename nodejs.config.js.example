@@ -70,6 +70,11 @@ settings = {
   host: 'localhost',
   resource: '/socket.io',
   serviceKey: '',
+  backend: {
+	    port: 80,
+	    host: 'your.drupalhost',
+	    messagePath: '/nodejs/message'
+	  },   
   debug: false,
   sslKeyPath: '',
   sslCertPath: '',

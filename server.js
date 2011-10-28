@@ -100,12 +100,13 @@ var sendMessageToBackend = function (message, callback) {
         host: settings.backend.host,
         headers: {
           'Content-Length': Buffer.byteLength(requestBody),
+          'Content-Length': Buffer.byteLength(requestBody),
           'Content-Type': 'application/x-www-form-urlencoded'
         },
         agent: false,
         method: 'POST',
         agent: http.getAgent(settings.backend.host, settings.backend.port),
-        path: settings.backend.basePath + settings.backend.messagePath
+        path: settings.backend.messagePath
       },
       scheme = settings.backend.scheme,
       request;
@@ -159,6 +160,7 @@ var authenticateClientCallback = function (response) {
     }
     var authData = false;
     try {
+		console.log(requestBody);
       authData = JSON.parse(requestBody);
     }
     catch (exception) {
