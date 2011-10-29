@@ -392,7 +392,7 @@ function nodejs_user_logout($account) {
  * Check if the given service key is valid.
  */
 function nodejs_is_valid_service_key($service_key) {
-  return $service_key == variable_get('nodejs_service_key', '');
+  return $service_key == variable_get('nodejs_config_serviceKey', '');
 }
 
 /**
@@ -432,6 +432,7 @@ function nodejs_message_handler() {
         $callback($message, $response);
       }
   }
+  echo $response;
   drupal_alter('nodejs_message_response', $response, $message);
 
   drupal_json($response ? $response : array('error' => 'Not implemented'));
@@ -442,6 +443,7 @@ function nodejs_message_handler() {
  * Checks the given key to see if it matches a valid session.
  */
 function nodejs_auth_check($message) {
+
   $uid = db_result(db_query("SELECT uid FROM {sessions} WHERE MD5(sid) = '%s'", $message['authToken']));
   $auth_user = $uid > 0 ? user_load($uid) : drupal_anonymous_user();
   $auth_user->authToken = $message['authToken'];
@@ -506,7 +508,7 @@ function nodejs_get_config() {
     'port' => variable_get('nodejs_config_port', '8080'),
     'resource' => '/socket.io',
     'authToken' => md5(session_id()),
-    'serviceKey' => variable_get('nodejs_service_key', ''),
+    'serviceKey' => variable_get('nodejs_config_serviceKey', ''),
   );
 
   return variable_get('nodejs_config', array()) + $defaults;
