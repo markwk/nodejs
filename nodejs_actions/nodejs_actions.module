@@ -75,7 +75,7 @@ function realtime_comment_action($comment, $context = array()) {
     $subject = db_result(db_query("SELECT subject FROM {comments} WHERE cid = %d", $cid));
   }
   $link = l($comment->subject, 'node/' . $comment->nid, array('fragment' => 'comment-' . $comment->cid));
-  $body = t('The User !name did %action a comment !link .', array('!name' => $comment['name'], '%action' => $action, '!link' => $link));
+  $body = t('The User !name did %action a comment !link .', array('!name' => $comment->namex, '%action' => $action, '!link' => $link));
 
   nodejs_actions_enqueue_message($subject, $body);
 }
