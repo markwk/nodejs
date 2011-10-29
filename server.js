@@ -100,7 +100,6 @@ var sendMessageToBackend = function (message, callback) {
         host: settings.backend.host,
         headers: {
           'Content-Length': Buffer.byteLength(requestBody),
-          'Content-Length': Buffer.byteLength(requestBody),
           'Content-Type': 'application/x-www-form-urlencoded'
         },
         method: 'POST',
@@ -158,7 +157,6 @@ var authenticateClientCallback = function (response) {
     }
     var authData = false;
     try {
-		console.log(requestBody);
       authData = JSON.parse(requestBody);
     }
     catch (exception) {
