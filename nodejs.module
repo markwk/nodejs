@@ -432,7 +432,6 @@ function nodejs_message_handler() {
         $callback($message, $response);
       }
   }
-  echo $response;
   drupal_alter('nodejs_message_response', $response, $message);
 
   drupal_json($response ? $response : array('error' => 'Not implemented'));
