@@ -103,15 +103,15 @@ var sendMessageToBackend = function (message, callback) {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
         method: 'POST',
+        agent: http.getAgent(settings.backend.host, settings.backend.port),
         path: settings.backend.messagePath
       },
-      scheme = settings.backend.scheme,
       request;
 
   if (settings.debug) {
     console.log("Sending message to backend", message, options);
   }
-  request = scheme == 'http' ? http.request(options, callback) : https.request(options, callback);
+  request = settings.backend.scheme == 'http' ? http.request(options, callback) : https.request(options, callback);
   request.on('error', function (error) {
     console.log("Error sending message to backend:", error.message);
   });
