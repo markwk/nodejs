@@ -103,9 +103,7 @@ var sendMessageToBackend = function (message, callback) {
           'Content-Length': Buffer.byteLength(requestBody),
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        agent: false,
         method: 'POST',
-        agent: http.getAgent(settings.backend.host, settings.backend.port),
         path: settings.backend.messagePath
       },
       scheme = settings.scheme,
