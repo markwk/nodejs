@@ -47,6 +47,8 @@
  *
  *  -- basePath: the base path of your backend site, defaults to ''.
  *
+ *  -- scheme: either 'http' or 'https', defaults to 'http'.
+ *
  * extensions: An array of names of node.js modules that should be loaded as
  * extensions to the node.js server.
  *
@@ -71,10 +73,12 @@ settings = {
   resource: '/socket.io',
   serviceKey: '',
   backend: {
-	    port: 80,
-	    host: 'drupalhost',
-	    messagePath: '/nodejs/message'
-	  },
+    port: 80,
+    host: 'drupalhost',
+    scheme: 'http',
+    basePath: '',
+    messagePath: '/nodejs/message'
+  },
   debug: false,
   sslKeyPath: '',
   sslCertPath: '',
