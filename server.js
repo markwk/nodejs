@@ -91,7 +91,6 @@ var channelIsClientWritable = function (channel) {
  * Send a message to the backend.
  */
 var sendMessageToBackend = function (message, callback) {
-	console.log(settings.port);
   var requestBody = querystring.stringify({
         messageJson: JSON.stringify(message),
         serviceKey: settings.serviceKey
@@ -106,7 +105,7 @@ var sendMessageToBackend = function (message, callback) {
         method: 'POST',
         path: settings.backend.messagePath
       },
-      scheme = settings.scheme,
+      scheme = settings.backend.scheme,
       request;
 
   if (settings.debug) {
