@@ -48,9 +48,21 @@ function realtime_node_notification($context = array(), $op) {
   nodejs_actions_enqueue_message(t('Node Activity'), $body);
 }
 
-function realtime_user_notification($comment, $context = array()) {
-  $user = $context['form_values']['name'];
-  $body = t('The user !user has %action.', array('!user' => $user, '%action' => t($context['op'])));
+function realtime_user_notification($context = array(), $op) {
+  /*echo '<pre>';
+  var_dump($context);
+  var_dump($op);  
+  echo '</pre>';*/
+  //$user = $context->name;
+  $link = l($context->name, 'user/' . $context->uid);  
+  if ($op['op'] == "insert")
+	$body = t('The user !user has been created.', array('!user' => $link));
+  elseif ($op['op'] == "delete")
+	$body = t('The user !user has been deleted.', array('!user' => $link));	
+  elseif ($op['op'] == "view")
+	$body = t('The user profile !user has been viewed.', array('!user' => $link));
+  else
+  	$body = t('The user !user has %action.', array('!user' => $link, '%action' => t($op['op'])));
   nodejs_actions_enqueue_message(t('User Activity'), $body);
 }
 
