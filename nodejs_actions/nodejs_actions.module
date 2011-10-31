@@ -49,11 +49,6 @@ function realtime_node_notification($context = array(), $op) {
 }
 
 function realtime_user_notification($context = array(), $op) {
-  /*echo '<pre>';
-  var_dump($context);
-  var_dump($op);  
-  echo '</pre>';*/
-  //$user = $context->name;
   $link = l($context->name, 'user/' . $context->uid);  
   if ($op['op'] == "insert")
 	$body = t('The user !user has been created.', array('!user' => $link));
