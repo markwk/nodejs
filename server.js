@@ -4,8 +4,7 @@
  * This code is beta quality.
  */
 
-var http = require('http'),
-    https = require('https'),
+var request = require('request'),
     url = require('url'),
     fs = require('fs'),
     express = require('express'),
@@ -46,21 +45,39 @@ var channels = {},
       transports: ['websocket', 'flashsocket', 'htmlfile', 'xhr-polling', 'jsonp-polling'],
       jsMinification: true,
       jsEtag: true,
+      backend: {
+        host: 'localhost',
+        scheme: 'http',
+        port: 80,
+        basePath: '',
+        messagePath: '/nodejs/message'
+      },
       logLevel: 1
     },
     extensions = [];
 
 try {
   var settings = vm.runInThisContext(fs.readFileSync(process.cwd() + '/nodejs.config.js'));
-  for (var key in settingsDefaults) {
-    if (!settings.hasOwnProperty(key)) {
-      settings[key] = settingsDefaults[key];
-    }
-  }
 }
 catch (exception) {
   console.log("Failed to read config file, exiting: " + exception);
   process.exit(1);
+}
+for (var key in settingsDefaults) {
+  if (key != 'backend' && !settings.hasOwnProperty(key)) {
+    settings[key] = settingsDefaults[key];
+  }
+}
+
+if (!settings.hasOwnProperty('backend')) {
+  settings.backend = settingsDefaults.backend;
+}
+else {
+  for (var key2 in settingsDefaults.backend) {
+    if (!settings.backend.hasOwnProperty(key2)) {
+      settings.backend[key2] = settingsDefaults.backend[key2];
+    }
+  }
 }
 
 // Load server extensions
@@ -88,34 +105,35 @@ var channelIsClientWritable = function (channel) {
 }
 
 /**
+ * Returns the backend url.
+ */
+var getBackendUrl = function () {
+  return settings.backend.scheme + '://' + settings.backend.host + ':' +
+         settings.backend.port + settings.backend.messagePath;
+}
+
+/**
  * Send a message to the backend.
  */
 var sendMessageToBackend = function (message, callback) {
   var requestBody = querystring.stringify({
-        messageJson: JSON.stringify(message),
-        serviceKey: settings.serviceKey
-      }),
-      options = {
-        port: settings.backend.port,
-        host: settings.backend.host,
-        headers: {
-          'Content-Length': Buffer.byteLength(requestBody),
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        method: 'POST',
-        agent: http.getAgent(settings.backend.host, settings.backend.port),
-        path: settings.backend.messagePath
-      },
-      request;
+    messageJson: JSON.stringify(message),
+    serviceKey: settings.serviceKey
+  });
+
+  var options = {
+    uri: settings.backend.scheme + '://' + settings.backend.host + ':' + settings.backend.port + settings.backend.messagePath,
+    body: requestBody,
+    headers: {
+      'Content-Length': Buffer.byteLength(requestBody),
+      'Content-Type': 'application/x-www-form-urlencoded'
+    }
+  }
 
   if (settings.debug) {
     console.log("Sending message to backend", message, options);
   }
-  request = settings.backend.scheme == 'http' ? http.request(options, callback) : https.request(options, callback);
-  request.on('error', function (error) {
-    console.log("Error sending message to backend:", error.message);
-  });
-  request.end(requestBody);
+  request.post(options, callback);
 }
 
 /**
@@ -139,49 +157,47 @@ var authenticateClient = function (client, message) {
 /**
  * Handle authentication call response.
  */
-var authenticateClientCallback = function (response) {
-  var requestBody = '';
-  response.setEncoding('utf8');
-  response.on('data', function (chunk) {
-    requestBody += chunk;
-  });
-  response.on('end', function () {
-    if (response.statusCode == 404) {
-      if (settings.debug) {
-        console.log('Backend authentication url not found, full response info:', response);
-      }
-      else {
-        console.log('Backend authentication url not found.');
-      }
-      return;
-    }
-    var authData = false;
-    try {
-      authData = JSON.parse(requestBody);
-    }
-    catch (exception) {
-      console.log('Failed to parse authentication message:', exception);
-      if (settings.debug) {
-        console.log('Failed message string: ' + requestBody);
-      }
-      return;
-    }
-    if (!checkServiceKey(authData.serviceKey)) {
-      console.log('Invalid service key "', authData.serviceKey, '"');
-      return;
-    }
-    if (authData.nodejsValidAuthToken) {
-      if (settings.debug) {
-        console.log('Valid login for uid "', authData.uid, '"');
-      }
-      setupClientConnection(authData.clientId, authData, authData.contentTokens);
-      authenticatedClients[authData.authToken] = authData;
+var authenticateClientCallback = function (error, response, body) {
+  if (error) {
+    console.log("Error with authenticate client request:", error);
+    return;
+  }
+  if (response.statusCode == 404) {
+    if (settings.debug) {
+      console.log('Backend authentication url not found, full response info:', response);
     }
     else {
-      console.log('Invalid login for uid "', authData.uid, '"');
-      delete authenticatedClients[authData.authToken];
+      console.log('Backend authentication url not found.');
     }
-  });
+    return;
+  }
+
+  var authData = false;
+  try {
+    authData = JSON.parse(body);
+  }
+  catch (exception) {
+    console.log('Failed to parse authentication message:', exception);
+    if (settings.debug) {
+      console.log('Failed message string: ' + body);
+    }
+    return;
+  }
+  if (!checkServiceKey(authData.serviceKey)) {
+    console.log('Invalid service key "', authData.serviceKey, '"');
+    return;
+  }
+  if (authData.nodejsValidAuthToken) {
+    if (settings.debug) {
+      console.log('Valid login for uid "', authData.uid, '"');
+    }
+    setupClientConnection(authData.clientId, authData, authData.contentTokens);
+    authenticatedClients[authData.authToken] = authData;
+  }
+  else {
+    console.log('Invalid login for uid "', authData.uid, '"');
+    delete authenticatedClients[authData.authToken];
+  }
 }
 
 /**
@@ -969,7 +985,7 @@ io.sockets.on('connection', function(socket) {
         console.log('Received message from client ' + socket.id);
       }
 
-      // If this message is destined for a channel, check that writing to 
+      // If this message is destined for a channel, check that writing to
       // channels from client sockets is allowed.
       if (message.hasOwnProperty('channel')) {
         if (settings.clientsCanWriteToChannels || channelIsClientWritable(message.channel)) {
